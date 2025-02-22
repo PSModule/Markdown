@@ -60,11 +60,11 @@ can generate headings, details blocks, fenced code blocks, and tables without ma
   }
   ```
   Yielding:
-  ```markdown
+  ````markdown
   ```powershell
   Get-Process
   ```
-  ```
+  ````
 
 - **Table**
   Convert a collection of PowerShell objects into a Markdown table:
@@ -121,7 +121,7 @@ Heading 1 'This is the section title' {
 
 The DSL above automatically generates the following Markdown:
 
-```markdown
+````markdown
 # This is the section title
 
 Some string content here
@@ -132,6 +132,7 @@ Some string content here too
 <p>
 
 Some string content here
+
 ```powershell
 Get-Process
 ```
@@ -153,7 +154,7 @@ Some string content here too
 | Jane Doe | 25 |
 
 This is the end of the section
-```
+````
 
 ## Contributing
 
