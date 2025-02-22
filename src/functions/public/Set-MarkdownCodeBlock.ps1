@@ -45,8 +45,10 @@
         'PSUseShouldProcessForStateChangingFunctions', '',
         Justification = 'Sets text in memory'
     )]
+    [Alias('Block')]
     [Alias('CodeBlock')]
     [Alias('Fence')]
+    [Alias('CodeFence')]
     [OutputType([string])]
     [CmdletBinding()]
     param(

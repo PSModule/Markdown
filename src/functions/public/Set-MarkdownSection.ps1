@@ -53,7 +53,6 @@
     [Alias('Header')]
     [Alias('Heading')]
     [Alias('Section')]
-    [Alias('H')]
     [OutputType([string])]
     [CmdletBinding()]
     param(
