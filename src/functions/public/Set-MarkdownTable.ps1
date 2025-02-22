@@ -10,19 +10,19 @@
 
         .EXAMPLE
         Table {
-            Get-Process | Select-Object -First 3 Name, Id
+            Get-Process | Select-Object -First 3 Name, ID
         }
 
         Output:
         ```powershell
-        | Name | Id |
+        | Name | ID |
         | ---- | -- |
         | notepad | 1234 |
         | explorer | 5678 |
         | chrome | 91011 |
         ```
 
-        Generates a Markdown table from the first three processes, displaying their Name and Id properties.
+        Generates a Markdown table from the first three processes, displaying their Name and ID properties.
 
         .OUTPUTS
         string
