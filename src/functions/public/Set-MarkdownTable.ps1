@@ -66,8 +66,9 @@
     $separator = '| ' + ( ($props | ForEach-Object { '-' }) -join ' | ' ) + ' |'
 
     # Output header rows.
-    Write-Output $header
-    Write-Output $separator
+    $content = @()
+    $content += $header
+    $content += $separator
 
     # For each object, output a table row.
     foreach ($item in $results) {
@@ -76,6 +77,10 @@
             if ($null -eq $val) { '' } else { $val.ToString() }
         }
         $row = '| ' + ($rowValues -join ' | ') + ' |'
-        Write-Output $row
+        $content += $row
     }
+    $content += ''
+
+    # Return the Markdown table as a string.
+    $content -join [Environment]::NewLine
 }

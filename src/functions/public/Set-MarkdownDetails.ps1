@@ -9,6 +9,24 @@
         wraps it in a Markdown details structure.
 
         .EXAMPLE
+        Set-MarkdownDetails -Title 'More Information' -Content {
+            'This is detailed content.'
+        }
+
+        Output:
+        ```powershell
+        <details><summary>More Information</summary>
+        <p>
+
+        This is detailed content.
+
+        </p>
+        </details>
+        ```
+
+        Generates a Markdown details block with the title "More Information" and the specified content.
+
+        .EXAMPLE
         Details 'More Information' {
             'This is detailed content.'
         }

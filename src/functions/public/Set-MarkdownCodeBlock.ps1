@@ -9,6 +9,18 @@
         block suitable for Markdown.
 
         .EXAMPLE
+        Set-MarkdownCodeBlock -Language 'powershell' -Content {
+            Get-Process
+        }
+
+        Output:
+        ```powershell
+        Get-Process
+        ```
+
+        Generates a fenced code block with the specified PowerShell script.
+
+        .EXAMPLE
         CodeBlock 'powershell' {
             Get-Process
         }

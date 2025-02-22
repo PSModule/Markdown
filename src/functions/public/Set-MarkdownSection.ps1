@@ -10,6 +10,20 @@
         The function returns the formatted Markdown as a string.
 
         .EXAMPLE
+        Set-MarkdownSection -Level 2 -Title "Example Section" -Content {
+            "This is an example of Markdown content."
+        }
+
+        Output:
+        ```powershell
+        ## Example Section
+
+        This is an example of Markdown content.
+        ```
+
+        Generates a Markdown section with an H2 heading and the given content.
+
+        .EXAMPLE
         Section 2 "Example Section" {
             "This is an example of Markdown content."
         }
