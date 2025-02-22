@@ -87,12 +87,11 @@
         }
     }
 
-    $code = $lines -join [Environment]::NewLine
+    $return = @()
+    $return += '```{0}' -f $Language
+    $return += $lines
+    $return += '```'
+    $return += ''
 
-    @"
-``````$Language
-$code
-``````
-
-"@
+    $return -join [Environment]::NewLine
 }

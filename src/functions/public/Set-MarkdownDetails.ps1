@@ -74,17 +74,18 @@
         [ScriptBlock] $Content
     )
 
-    $captured = & $Content | Out-String
+    $captured = . $Content | Out-String
     $captured = $captured.TrimEnd()
 
-    @"
-<details><summary>$Title</summary>
-<p>
+    $return = @()
+    $return += "<details><summary>$Title</summary>"
+    $return += '<p>'
+    $return += ''
+    $return += $captured
+    $return += ''
+    $return += '</p>'
+    $return += '</details>'
+    $return += ''
 
-$captured
-
-</p>
-</details>
-
-"@
+    $return -join [System.Environment]::NewLine
 }

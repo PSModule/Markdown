@@ -71,15 +71,17 @@
         [scriptblock] $Content
     )
 
-    $captured = & $Content | Out-String
+    $captured = . $Content | Out-String
     $captured = $captured.TrimEnd()
 
     # Create the Markdown header by repeating the '#' character
     $hashes = '#' * $Level
-    @"
-$hashes $Title
 
-$captured
+    $return = @()
+    $return += "$hashes $Title"
+    $return += ''
+    $return += $captured
+    $return += ''
 
-"@
+    $return -join [System.Environment]::NewLine
 }

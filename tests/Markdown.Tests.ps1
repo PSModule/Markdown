@@ -92,17 +92,13 @@ Get-Process
         It 'Can write a markdown doc as DSL' {
             $content = Heading 1 'This is the section title' {
                 'Some string content here'
-
                 Heading 2 'Should be able to call nested sections' {
                     'Some string content here too'
-
                     Details 'This is the detail title' {
                         'Some string content here'
-
                         CodeBlock 'powershell' {
                             Get-Process
                         }
-
                         Details 'Should be able to call nested details' {
                             'Some string content here too'
                         }
@@ -120,6 +116,7 @@ Get-Process
                         }
                     )
                 }
+                "This is the end of the section"
             }
 
             $expected = @'
@@ -152,6 +149,8 @@ Some string content here too
 | - | - |
 | John Doe | 30 |
 | Jane Doe | 25 |
+
+This is the end of the section
 
 '@
             $content | Should -Be $expected
