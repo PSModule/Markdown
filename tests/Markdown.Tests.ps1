@@ -90,7 +90,7 @@ Get-Process
 
     Context 'Set-MarkdownParagraph' {
         It 'Can render a paragraph' {
-            $content = Paragraph {
+            $content = Set-MarkdownParagraph -Content {
                 'This is a simple Markdown paragraph generated dynamically.'
             }
 
@@ -103,7 +103,7 @@ This is a simple Markdown paragraph generated dynamically.
 
         }
         It 'Can render a paragraph with HTML <p> tags' {
-            $content = Paragraph {
+            $content = Set-MarkdownParagraph -Content {
                 'This is a simple Markdown paragraph generated dynamically.'
             } -Tags
 
