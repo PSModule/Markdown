@@ -88,6 +88,39 @@ Get-Process
         }
     }
 
+    Context 'Set-MarkdownParagraph' {
+        It 'Can render a paragraph' {
+            $content = Set-MarkdownParagraph -Content {
+                'This is a simple Markdown paragraph generated dynamically.'
+            }
+
+            $expected = @'
+
+This is a simple Markdown paragraph generated dynamically.
+
+'@
+            $content | Should -Be $expected
+
+        }
+        It 'Can render a paragraph with HTML <p> tags' {
+            $content = Set-MarkdownParagraph -Content {
+                'This is a simple Markdown paragraph generated dynamically.'
+            } -Tags
+
+            $expected = @'
+
+<p>
+
+This is a simple Markdown paragraph generated dynamically.
+
+</p>
+
+'@
+            $content | Should -Be $expected
+
+        }
+    }
+
     Context 'Combined' {
         It 'Can write a markdown doc as DSL' {
             $content = Heading 1 'This is the section title' {
@@ -116,7 +149,7 @@ Get-Process
                         }
                     )
                 }
-                "This is the end of the section"
+                'This is the end of the section'
             }
 
             $expected = @'
