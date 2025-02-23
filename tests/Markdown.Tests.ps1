@@ -147,31 +147,45 @@ This is a simple Markdown paragraph generated dynamically.
         It 'Can write a markdown doc as DSL' {
             $content = Heading 1 'This is the section title' {
                 'Some string content here'
+
                 Heading 2 'Should be able to call nested sections' {
                     'Some string content here too'
+
                     Details 'This is the detail title' {
                         'Some string content here'
+
                         CodeBlock 'powershell' {
                             Get-Process
                         }
+
                         Details 'Should be able to call nested details' {
                             'Some string content here too'
                         }
                     }
+
+                    Paragraph {
+                        'This is a paragraph'
+                    } -Tags
+
+                    'This is the end of the section'
                 }
+
+                CodeBlock 'powershell' {
+                    @(
+                        [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+                        [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+                    )
+                } -Execute
+
                 Table {
                     @(
-                        [PSCustomObject]@{
-                            Name = 'John Doe'
-                            Age  = 30
-                        }
-                        [PSCustomObject]@{
-                            Name = 'Jane Doe'
-                            Age  = 25
-                        }
+                        [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+                        [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
                     )
                 }
-                'This is the end of the section'
+
+
+                'This is the end of the document'
             }
 
             $expected = @'
@@ -200,12 +214,31 @@ Some string content here too
 </p>
 </details>
 
+
+<p>
+
+This is a paragraph
+
+</p>
+
+This is the end of the section
+
+```powershell
+
+Name     Age
+----     ---
+John Doe  30
+Jane Doe  25
+
+
+```
+
 | Name | Age |
 | - | - |
 | John Doe | 30 |
 | Jane Doe | 25 |
 
-This is the end of the section
+This is the end of the document
 
 '@
             $content | Should -Be $expected

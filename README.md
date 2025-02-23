@@ -20,69 +20,166 @@ can generate headings, details blocks, fenced code blocks, and tables without ma
 
 ### DSL Syntax Overview
 
-- **Heading**
-  Create Markdown headings by specifying the level, title, and content. For example:
-  ```powershell
-  Heading 1 'Title' {
-      'Content under the title'
-  }
-  ```
-  This produces:
-  ```markdown
-  # Title
+#### Heading
 
-  Content under the title
-  ```
+Create Markdown headings by specifying the level, title, and content.
 
-- **Details**
-  Generate collapsible sections with a summary title:
-  ```powershell
-  Details 'More Information' {
-      'Detailed content goes here'
-  }
-  ```
-  Which outputs:
-  ```markdown
-  <details><summary>More Information</summary>
-  <p>
+```powershell
+Heading 1 'Title' {
+    'Content under the title'
+}
+```
 
-  Detailed content goes here
+This produces:
 
-  </p>
-  </details>
-  ```
+```markdown
+# Title
 
-- **CodeBlock**
-  Create fenced code blocks for any programming language:
-  ```powershell
-  CodeBlock 'powershell' {
-      Get-Process
-  }
-  ```
-  Yielding:
-  ````markdown
-  ```powershell
-  Get-Process
-  ```
-  ````
+Content under the title
+```
 
-- **Table**
-  Convert a collection of PowerShell objects into a Markdown table:
-  ```powershell
-  Table {
-      @(
-          [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
-          [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
-      )
-  }
-  ```
-  Which results in:
-  ```markdown
-  | Name | Age |
-  | - | - |
-  | John Doe | 30 |
-  | Jane Doe | 25 |
-  ```
+Supports nested headings.
+
+```powershell
+Heading 1 'Title' {
+    'Content under the title'
+
+    Heading 2 'Nested Title' {
+        'Content under the nested title'
+    }
+}
+```
+
+This produces:
+
+```markdown
+# Title
+
+Content under the title
+
+## Nested Title
+
+Content under the nested title
+```
+
+#### Details
+
+Generate collapsible sections with a summary title.
+
+```powershell
+Details 'More Information' {
+    'Detailed content goes here'
+}
+```
+
+This produces:
+
+```markdown
+<details><summary>More Information</summary>
+<p>
+
+Detailed content goes here
+
+</p>
+</details>
+```
+
+Supports nested details blocks.
+
+```powershell
+Details 'More Information' {
+    'Detailed content goes here'
+
+    Details 'Nested Information' {
+        'Nested content goes here'
+    }
+}
+```
+
+This produces:
+
+```markdown
+<details><summary>More Information</summary>
+<p>
+
+Detailed content goes here
+
+<details><summary>Nested Information</summary>
+<p>
+
+Nested content goes here
+
+</p>
+</details>
+
+</p>
+</details>
+```
+
+
+#### CodeBlock
+
+Create fenced code blocks for any programming language.
+
+```powershell
+CodeBlock 'powershell' {
+    Get-Process
+}
+```
+
+This produces:
+
+````markdown
+```powershell
+Get-Process
+```
+````
+
+It can also execute PowerShell code directly and use the output in the code block (using the `-Execute` switch).
+
+```powershell
+CodeBlock 'powershell' {
+    @(
+        [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+        [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+    )
+} -Execute
+```
+
+This produces:
+
+````markdown
+```powershell
+
+Name     Age
+----     ---
+John Doe  30
+Jane Doe  25
+
+```
+````
+
+#### Table
+
+Convert a collection of PowerShell objects into a Markdown table.
+
+```powershell
+Table {
+    @(
+        [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+        [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+    )
+}
+```
+
+This produces:
+
+```markdown
+| Name | Age |
+| - | - |
+| John Doe | 30 |
+| Jane Doe | 25 |
+```
 
 ### Example: Full Markdown Document Generation
 
@@ -106,7 +203,20 @@ Heading 1 'This is the section title' {
                 'Some string content here too'
             }
         }
+
+        Paragraph {
+            'This is a paragraph'
+        } -Tags
+
+        'This is the end of the section'
     }
+
+    CodeBlock 'powershell' {
+        @(
+            [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+            [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+        )
+    } -Execute
 
     Table {
         @(
@@ -115,7 +225,8 @@ Heading 1 'This is the section title' {
         )
     }
 
-    'This is the end of the section'
+
+    'This is the end of the document'
 }
 ```
 
@@ -132,7 +243,6 @@ Some string content here too
 <p>
 
 Some string content here
-
 ```powershell
 Get-Process
 ```
@@ -148,12 +258,32 @@ Some string content here too
 </p>
 </details>
 
+
+<p>
+
+This is a paragraph
+
+</p>
+
+This is the end of the section
+
+```powershell
+
+Name     Age
+----     ---
+John Doe  30
+Jane Doe  25
+
+
+```
+
 | Name | Age |
 | - | - |
 | John Doe | 30 |
 | Jane Doe | 25 |
 
-This is the end of the section
+This is the end of the document
+
 ````
 
 ## Contributing
