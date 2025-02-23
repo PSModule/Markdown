@@ -86,6 +86,28 @@ Get-Process
 '@
             $content | Should -Be $expected
         }
+
+        It 'Can execute and render a code block with PowerShell code' {
+            $content = Set-MarkdownCodeBlock -Language 'powershell' -Content {
+                [PSCustomObject]@{
+                    Name = 'John Doe'
+                    Age  = 30
+                }
+            } -Execute
+
+            $expected = @'
+```powershell
+
+Name     Age
+----     ---
+John Doe  30
+
+
+```
+
+'@
+            $content | Should -Be $expected
+        }
     }
 
     Context 'Set-MarkdownParagraph' {
