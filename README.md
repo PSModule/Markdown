@@ -1,69 +1,172 @@
-# {{ NAME }}
+# Markdown
 
-{{ DESCRIPTION }}
-
-## Prerequisites
-
-This uses the following external resources:
-- The [PSModule framework](https://github.com/PSModule) for building, testing and publishing the module.
+A PowerShell module that converts a custom DSL into Markdown documents with ease. It empowers you to programmatically generate well-structured
+Markdown—featuring headings, collapsible details, code fences, and tables — using intuitive DSL commands. Built for automation and fully
+cross-platform, this module challenges the conventional approach to documentation generation.
 
 ## Installation
 
-To install the module from the PowerShell Gallery, you can use the following command:
+To install the module from the PowerShell Gallery, run the following commands:
 
 ```powershell
-Install-PSResource -Name {{ NAME }}
-Import-Module -Name {{ NAME }}
+Install-PSResource -Name Markdown
+Import-Module -Name Markdown
 ```
 
 ## Usage
 
-Here is a list of example that are typical use cases for the module.
+The `Markdown` module introduces a Domain Specific Language (DSL) that simplifies the creation of Markdown files. With straightforward commands, you
+can generate headings, details blocks, fenced code blocks, and tables without manually formatting Markdown.
 
-### Example 1: Greet an entity
+### DSL Syntax Overview
 
-Provide examples for typical commands that a user would like to do with the module.
+- **Heading**
+  Create Markdown headings by specifying the level, title, and content. For example:
+  ```powershell
+  Heading 1 'Title' {
+      'Content under the title'
+  }
+  ```
+  This produces:
+  ```markdown
+  # Title
+
+  Content under the title
+  ```
+
+- **Details**
+  Generate collapsible sections with a summary title:
+  ```powershell
+  Details 'More Information' {
+      'Detailed content goes here'
+  }
+  ```
+  Which outputs:
+  ```markdown
+  <details><summary>More Information</summary>
+  <p>
+
+  Detailed content goes here
+
+  </p>
+  </details>
+  ```
+
+- **CodeBlock**
+  Create fenced code blocks for any programming language:
+  ```powershell
+  CodeBlock 'powershell' {
+      Get-Process
+  }
+  ```
+  Yielding:
+  ````markdown
+  ```powershell
+  Get-Process
+  ```
+  ````
+
+- **Table**
+  Convert a collection of PowerShell objects into a Markdown table:
+  ```powershell
+  Table {
+      @(
+          [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+          [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+      )
+  }
+  ```
+  Which results in:
+  ```markdown
+  | Name | Age |
+  | - | - |
+  | John Doe | 30 |
+  | Jane Doe | 25 |
+  ```
+
+### Example: Full Markdown Document Generation
+
+Below is an example DSL script that demonstrates how to compose a complete Markdown document:
 
 ```powershell
-Greet-Entity -Name 'World'
-Hello, World!
+Heading 1 'This is the section title' {
+    'Some string content here'
+
+    Heading 2 'Should be able to call nested sections' {
+        'Some string content here too'
+
+        Details 'This is the detail title' {
+            'Some string content here'
+
+            CodeBlock 'powershell' {
+                Get-Process
+            }
+
+            Details 'Should be able to call nested details' {
+                'Some string content here too'
+            }
+        }
+    }
+
+    Table {
+        @(
+            [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
+            [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
+        )
+    }
+
+    'This is the end of the section'
+}
 ```
 
-### Example 2
+The DSL above automatically generates the following Markdown:
 
-Provide examples for typical commands that a user would like to do with the module.
+````markdown
+# This is the section title
+
+Some string content here
+## Should be able to call nested sections
+
+Some string content here too
+<details><summary>This is the detail title</summary>
+<p>
+
+Some string content here
 
 ```powershell
-Import-Module -Name PSModuleTemplate
+Get-Process
 ```
 
-### Find more examples
+<details><summary>Should be able to call nested details</summary>
+<p>
 
-To find more examples of how to use the module, please refer to the [examples](examples) folder.
+Some string content here too
 
-Alternatively, you can use the Get-Command -Module 'This module' to find more commands that are available in the module.
-To find examples of each of the commands you can use Get-Help -Examples 'CommandName'.
+</p>
+</details>
 
-## Documentation
+</p>
+</details>
 
-Link to further documentation if available, or describe where in the repository users can find more detailed documentation about
-the module's functions and features.
+| Name | Age |
+| - | - |
+| John Doe | 30 |
+| Jane Doe | 25 |
+
+This is the end of the section
+````
 
 ## Contributing
 
-Coder or not, you can contribute to the project! We welcome all contributions.
+Whether you’re a user with valuable feedback or a developer with innovative ideas, your contributions are welcome. Here’s how you can get involved:
 
 ### For Users
 
-If you don't code, you still sit on valuable information that can make this project even better. If you experience that the
-product does unexpected things, throw errors or is missing functionality, you can help by submitting bugs and feature requests.
-Please see the issues tab on this project and submit a new issue that matches your needs.
+If you encounter unexpected behavior, error messages, or missing functionality, please open an issue in the repository.
+Your insights are crucial for refining the module.
 
 ### For Developers
 
-If you do code, we'd love to have your contributions. Please read the [Contribution guidelines](CONTRIBUTING.md) for more information.
-You can either help by picking up an existing issue or submit a new one if you have an idea for a new feature or improvement.
-
-## Acknowledgements
-
-Here is a list of people and projects that helped this project in some way.
+We welcome contributions that enhance automation, extend functionality, or improve cross-platform compatibility.
+Please review the [Contribution Guidelines](CONTRIBUTING.md) before submitting pull requests. Whether you want to tackle an existing
+issue or propose a new feature, your ideas are essential for pushing the boundaries of what's possible with PowerShell documentation automation.
