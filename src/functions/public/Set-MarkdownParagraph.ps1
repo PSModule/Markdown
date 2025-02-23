@@ -44,6 +44,10 @@
         .LINK
         https://psmodule.io/Markdown/Functions/Set-MarkdownParagraph/
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Sets text in memory'
+    )]
     [OutputType([string])]
     [Alias('Paragraph')]
     [CmdletBinding()]
