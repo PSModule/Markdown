@@ -18,9 +18,7 @@ Import-Module -Name Markdown
 The `Markdown` module introduces a Domain Specific Language (DSL) that simplifies the creation of Markdown files. With straightforward commands, you
 can generate headings, details blocks, fenced code blocks, and tables without manually formatting Markdown.
 
-### DSL Syntax Overview
-
-#### Heading
+### Heading
 
 Create Markdown headings by specifying the level, title, and content.
 
@@ -62,7 +60,43 @@ Content under the title
 Content under the nested title
 ```
 
-#### Details
+### Paragraph
+
+Create a paragraph of text.
+
+```powershell
+Paragraph {
+    'This is a paragraph'
+}
+```
+
+This produces:
+
+```markdown
+
+This is a paragraph
+
+```
+
+Supports tags for inline formatting.
+
+```powershell
+Paragraph {
+    'This is a paragraph with tags'
+} -Tags
+```
+
+This produces:
+
+```markdown
+<p>
+
+This is a paragraph with tags
+
+</p>
+```
+
+### Details
 
 Generate collapsible sections with a summary title.
 
@@ -117,7 +151,7 @@ Nested content goes here
 ```
 
 
-#### CodeBlock
+### CodeBlock
 
 Create fenced code blocks for any programming language.
 
@@ -159,7 +193,7 @@ Jane Doe  25
 ```
 ````
 
-#### Table
+### Table
 
 Convert a collection of PowerShell objects into a Markdown table.
 
