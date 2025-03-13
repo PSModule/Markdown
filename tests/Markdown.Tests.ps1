@@ -9,6 +9,10 @@
 [CmdletBinding()]
 param()
 
+BeforeAll {
+    $PSStyle.OutputRendering = 'Host'
+}
+
 Describe 'Module' {
     Context 'Set-MarkdownSection' {
         It 'Can render a #2 heading with a paragraph' {
@@ -244,4 +248,8 @@ This is the end of the document
             $content | Should -Be $expected
         }
     }
+}
+
+AfterAll {
+    $PSStyle.OutputRendering = 'Ansi'
 }
