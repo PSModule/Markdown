@@ -9,7 +9,7 @@
         string representation of the output. It then formats the result as a fenced code block suitable for Markdown.
 
         .EXAMPLE
-        Set-MarkdownCodeBlock -Language 'powershell' -Content {
+        Set-MarkdownCodeBlock -Language 'PowerShell' -Content {
             Get-Process
         }
 
@@ -21,7 +21,7 @@
         Generates a fenced code block with the specified PowerShell script.
 
         .EXAMPLE
-        CodeBlock 'powershell' {
+        CodeBlock 'PowerShell' {
             Get-Process
         }
 
@@ -33,7 +33,7 @@
         Generates a fenced code block with the specified PowerShell script.
 
         .EXAMPLE
-        CodeBlock -Language 'powershell' -Content {
+        CodeBlock -Language 'PowerShell' -Content {
             Get-Process | Select-Object -First 1
         } -Execute
 
