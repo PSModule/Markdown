@@ -7,7 +7,7 @@
         Details 'This is the detail title' {
             'Some string content here'
 
-            CodeBlock 'powershell' {
+            CodeBlock 'PowerShell' {
                 Get-Process
             }
 

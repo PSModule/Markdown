@@ -156,7 +156,7 @@ Nested content goes here
 Create fenced code blocks for any programming language.
 
 ```powershell
-CodeBlock 'powershell' {
+CodeBlock 'PowerShell' {
     Get-Process
 }
 ```
@@ -172,7 +172,7 @@ Get-Process
 It can also execute PowerShell code directly and use the output in the code block (using the `-Execute` switch).
 
 ```powershell
-CodeBlock 'powershell' {
+CodeBlock 'PowerShell' {
     @(
         [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
         [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
@@ -229,7 +229,7 @@ Heading 1 'This is the section title' {
         Details 'This is the detail title' {
             'Some string content here'
 
-            CodeBlock 'powershell' {
+            CodeBlock 'PowerShell' {
                 Get-Process
             }
 
@@ -245,7 +245,7 @@ Heading 1 'This is the section title' {
         'This is the end of the section'
     }
 
-    CodeBlock 'powershell' {
+    CodeBlock 'PowerShell' {
         @(
             [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
             [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }

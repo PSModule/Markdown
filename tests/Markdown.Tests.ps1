@@ -78,7 +78,7 @@ This is detailed content.
 
     Context 'Set-MarkdownCodeBlock' {
         It 'Can render a code block with PowerShell code' {
-            $content = Set-MarkdownCodeBlock -Language 'powershell' -Content {
+            $content = Set-MarkdownCodeBlock -Language 'PowerShell' -Content {
                 Get-Process
             }
 
@@ -92,7 +92,7 @@ Get-Process
         }
 
         It 'Can execute and render a code block with PowerShell code' {
-            $content = Set-MarkdownCodeBlock -Language 'powershell' -Content {
+            $content = Set-MarkdownCodeBlock -Language 'PowerShell' -Content {
                 [PSCustomObject]@{
                     Name = 'John Doe'
                     Age  = 30
@@ -158,7 +158,7 @@ This is a simple Markdown paragraph generated dynamically.
                     Details 'This is the detail title' {
                         'Some string content here'
 
-                        CodeBlock 'powershell' {
+                        CodeBlock 'PowerShell' {
                             Get-Process
                         }
 
@@ -174,7 +174,7 @@ This is a simple Markdown paragraph generated dynamically.
                     'This is the end of the section'
                 }
 
-                CodeBlock 'powershell' {
+                CodeBlock 'PowerShell' {
                     @(
                         [PSCustomObject]@{ Name = 'John Doe'; Age = 30 }
                         [PSCustomObject]@{ Name = 'Jane Doe'; Age = 25 }
