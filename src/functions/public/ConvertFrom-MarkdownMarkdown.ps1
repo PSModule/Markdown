@@ -42,8 +42,8 @@ function ConvertFrom-MarkdownMarkdown {
     $inCodeBlock = $false
     $tableHeaings = @()
 
-    # Split the content into lines
-    $lines = $content.split([System.Environment]::NewLine)
+    # Split the content into lines in a line-ending-agnostic way
+    $lines = $content -split '\r?\n'
 
     # Process each line
     foreach ($line in $lines) {
@@ -64,8 +64,8 @@ function ConvertFrom-MarkdownMarkdown {
             # Check if this is the start of a continuation by checking the table headings
             if($tableHeaings) {
                 Write-Debug "[Table] Continuation row found: $word"
-                # Get all table values if the value is - ignore it
-                $tableValues = $words -join ' ' -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' -and $_ -ne '-' }
+                # Get all table values, ignoring empty cells and markdown table separator cells (e.g. ---, :---:, ---:)
+                $tableValues = $words -join ' ' -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' -and ($_ -notmatch '^\:?-{3,}\:?$') }
 
                 # If there are table values create a pscustom object with attributes for every table heading and the values as values
                 if($tableValues) {
@@ -252,8 +252,8 @@ function ConvertFrom-MarkdownMarkdown {
             }
         }
 
-        # If nothing else add the line as text
-        $currentObject.Value.Content += $words[0..($words.Length - 1)] -join ' '
+        # If nothing else add the original line as text without normalizing internal whitespace
+        $currentObject.Value.Content += $line
 
         # Check if the word contains with </summary> if so the content should be added to the parent
         if (($words -join ' ').ToLower() -match '</summary>') {

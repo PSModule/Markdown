@@ -252,7 +252,7 @@ This is the end of the document
 
 Describe 'ConvertFrom-MarkdownMarkdown' {
     BeforeAll {
-        $testFile = Join-Path $env:TEMP "PesterMarkdownTest_$([guid]::NewGuid().ToString()).md"
+        $testFile = Join-Path ([System.IO.Path]::GetTempPath()) "PesterMarkdownTest_$([guid]::NewGuid().ToString()).md"
         @'
 # Main Title
 
@@ -401,6 +401,9 @@ More content here
             $subSection = $result.Content[0].Content | Where-Object { $_.Type -eq 'Header' }
             $strings = $subSection.Content | Where-Object { $_ -is [string] }
             $strings | Should -Contain 'Plain text without paragraph tags'
+
+            $paragraphs = $subSection.Content | Where-Object { $_.Type -eq 'Paragraph' }
+            $paragraphs | Should -BeNullOrEmpty
         }
     }
 

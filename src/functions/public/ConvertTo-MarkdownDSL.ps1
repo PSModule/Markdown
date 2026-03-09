@@ -67,7 +67,7 @@ function ConvertTo-MarkdownDSL {
         https://psmodule.io/Markdown/Functions/Set-MarkdownCodeBlock/
     #>
 
-    [OutputType([scriptblock])]
+    [OutputType([scriptblock], [string])]
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, Position = 0)]
