@@ -4,13 +4,13 @@ function ConvertFrom-MarkdownMarkdown {
         Converts a Markdown file into a structured object representation.
 
         .DESCRIPTION
-        The ConvertFrom-Markdown function reads a Markdown file and processes its content to create a structured object representation. This representation includes headers, paragraphs, code blocks, tables, and details sections. The function uses regular expressions and string manipulation to identify different Markdown elements and organizes them into a hierarchical structure based on their levels.
+        The ConvertFrom-MarkdownMarkdown function reads a Markdown file and processes its content to create a structured object representation. This representation includes headers, paragraphs, code blocks, tables, and details sections. The function uses regular expressions and string manipulation to identify different Markdown elements and organizes them into a hierarchical structure based on their levels.
 
         .PARAMETER Path
         The path to the Markdown file that needs to be converted.
 
         .EXAMPLE
-        ConvertFrom-Markdown -Path "C:\Docs\example.md"
+        ConvertFrom-MarkdownMarkdown -Path "C:\Docs\example.md"
         This example reads the "example.md" file and converts its Markdown content into a structured object representation.
 
         .OUTPUTS
