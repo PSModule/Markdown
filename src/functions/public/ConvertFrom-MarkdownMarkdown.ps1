@@ -47,8 +47,8 @@ function ConvertFrom-MarkdownMarkdown {
 
     # Process each line
     foreach ($line in $lines) {
-        # Skip empty lines
-        if ($line -eq '') {
+        # Skip empty lines only when not inside a code block
+        if (($line -eq '') -and -not $inCodeBlock) {
             continue
         }
 
