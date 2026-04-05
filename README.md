@@ -322,12 +322,12 @@ This is the end of the document
 
 ## Conversion Functions
 
-The module also provides `ConvertFrom-Markdown` and `ConvertTo-Markdown` functions for parsing and generating markdown,
+The module also provides `ConvertFrom-Markdown` and `ConvertTo-Markdown` functions for parsing and generating Markdown,
 following the standard PowerShell `ConvertFrom-`/`ConvertTo-` verb convention (like `ConvertFrom-Json`/`ConvertTo-Json`).
 
 ### ConvertFrom-Markdown
 
-Parses a markdown string into a structured object tree (AST) containing headings, code blocks, paragraphs, tables, and details
+Parses a Markdown string into a structured object tree (AST) containing headings, code blocks, paragraphs, tables, and details
 sections — enabling programmatic inspection and transformation.
 
 > **Note:** PowerShell 6.1+ includes a built-in `ConvertFrom-Markdown` cmdlet that converts markdown to HTML/VT100. This module's
@@ -342,8 +342,8 @@ $doc.Content[0].Title # First heading title
 
 ### ConvertTo-Markdown
 
-Converts a structured MarkdownDocument object back into a well-formatted markdown string. This enables **round-tripping**: read a
-markdown document, inspect or transform it, and write it back.
+Converts a structured MarkdownDocument object back into a well-formatted Markdown string. This enables **round-tripping**: read a
+Markdown document, inspect or transform it, and write it back.
 
 ```powershell
 $markdown = Get-Content -Raw '.\README.md'
