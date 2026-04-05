@@ -320,6 +320,63 @@ This is the end of the document
 
 ````
 
+## Conversion Functions
+
+The module also provides `ConvertFrom-Markdown` and `ConvertTo-Markdown` functions for parsing and generating markdown,
+following the standard PowerShell `ConvertFrom-`/`ConvertTo-` verb convention (like `ConvertFrom-Json`/`ConvertTo-Json`).
+
+### ConvertFrom-Markdown
+
+Parses a markdown string into a structured object tree (AST) containing headings, code blocks, paragraphs, tables, and details
+sections — enabling programmatic inspection and transformation.
+
+> **Note:** PowerShell 6.1+ includes a built-in `ConvertFrom-Markdown` cmdlet that converts markdown to HTML/VT100. This module's
+> function shadows it when loaded. To use the built-in, call `Microsoft.PowerShell.Utility\ConvertFrom-Markdown`.
+
+```powershell
+$markdown = Get-Content -Raw '.\README.md'
+$doc = $markdown | ConvertFrom-Markdown
+$doc.Content          # Top-level elements
+$doc.Content[0].Title # First heading title
+```
+
+### ConvertTo-Markdown
+
+Converts a structured MarkdownDocument object back into a well-formatted markdown string. This enables **round-tripping**: read a
+markdown document, inspect or transform it, and write it back.
+
+```powershell
+$markdown = Get-Content -Raw '.\README.md'
+$doc = $markdown | ConvertFrom-Markdown
+$result = $doc | ConvertTo-Markdown
+$result | Set-Content '.\output.md'
+```
+
+### Supported Node Types
+
+| Class | Properties | Represents |
+| - | - | - |
+| `MarkdownDocument` | `Content` (node array) | Root document container |
+| `MarkdownHeader` | `Level`, `Title`, `Content` (node array) | Heading `#`–`######` with nested content |
+| `MarkdownCodeBlock` | `Language`, `Code` (string) | Fenced code block |
+| `MarkdownParagraph` | `Content` (string), `Tags` (bool) | Paragraph text (supports `<p>` tag variant) |
+| `MarkdownTable` | `Rows` (PSCustomObject array) | Markdown table |
+| `MarkdownDetails` | `Title`, `Content` (node array) | Collapsible `<details>` section |
+| `MarkdownText` | `Text` (string) | Plain text content |
+
+### Round-Trip Example
+
+```powershell
+# Parse → inspect → regenerate
+$doc = Get-Content -Raw '.\example.md' | ConvertFrom-Markdown
+
+# Find all headings
+$doc.Content | Where-Object { $_ -is [MarkdownHeader] } | ForEach-Object { $_.Title }
+
+# Convert back to markdown
+$doc | ConvertTo-Markdown | Set-Content '.\output.md'
+```
+
 ## Contributing
 
 Whether you’re a user with valuable feedback or a developer with innovative ideas, your contributions are welcome. Here’s how you can get involved:
