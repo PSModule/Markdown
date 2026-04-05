@@ -678,6 +678,196 @@ Get-Feature
     }
 }
 
+Describe 'Class Constructors' {
+    Context 'MarkdownText' {
+        It 'Should create an empty MarkdownText with parameterless constructor' {
+            $node = [MarkdownText]::new()
+            $node.Text | Should -Be ''
+        }
+    }
+
+    Context 'MarkdownParagraph' {
+        It 'Should create an empty MarkdownParagraph with parameterless constructor' {
+            $node = [MarkdownParagraph]::new()
+            $node.Content | Should -Be ''
+            $node.Tags | Should -Be $false
+        }
+
+        It 'Should create a MarkdownParagraph with content only (Tags defaults to false)' {
+            $node = [MarkdownParagraph]::new('Hello')
+            $node.Content | Should -Be 'Hello'
+            $node.Tags | Should -Be $false
+        }
+    }
+
+    Context 'MarkdownCodeBlock' {
+        It 'Should create an empty MarkdownCodeBlock with parameterless constructor' {
+            $node = [MarkdownCodeBlock]::new()
+            $node.Language | Should -Be ''
+            $node.Code | Should -Be ''
+        }
+    }
+
+    Context 'MarkdownTable' {
+        It 'Should create an empty MarkdownTable with parameterless constructor' {
+            $node = [MarkdownTable]::new()
+            $node.Rows | Should -Be @()
+        }
+    }
+
+    Context 'MarkdownDetails' {
+        It 'Should create an empty MarkdownDetails with parameterless constructor' {
+            $node = [MarkdownDetails]::new()
+            $node.Title | Should -Be ''
+            $node.Content | Should -Be @()
+        }
+
+        It 'Should create a MarkdownDetails with title and content' {
+            $child = [MarkdownText]::new('child')
+            $node = [MarkdownDetails]::new('My Title', @($child))
+            $node.Title | Should -Be 'My Title'
+            $node.Content.Count | Should -Be 1
+        }
+    }
+
+    Context 'MarkdownHeader' {
+        It 'Should create an empty MarkdownHeader with parameterless constructor' {
+            $node = [MarkdownHeader]::new()
+            $node.Level | Should -Be 1
+            $node.Title | Should -Be ''
+            $node.Content | Should -Be @()
+        }
+
+        It 'Should create a MarkdownHeader with level, title and content' {
+            $child = [MarkdownText]::new('child')
+            $node = [MarkdownHeader]::new(3, 'Title', @($child))
+            $node.Level | Should -Be 3
+            $node.Title | Should -Be 'Title'
+            $node.Content.Count | Should -Be 1
+        }
+    }
+
+    Context 'MarkdownDocument' {
+        It 'Should create a MarkdownDocument with initial content' {
+            $child = [MarkdownText]::new('child')
+            $doc = [MarkdownDocument]::new(@($child))
+            $doc.Content.Count | Should -Be 1
+        }
+    }
+}
+
+Describe 'ConvertFrom-Markdown Edge Cases' {
+    Context 'Multi-line summary' {
+        It 'Should parse a details block with summary on a separate line' {
+            $md = @'
+<details>
+<summary>Multi-line Title</summary>
+<p>
+
+Content inside
+
+</p>
+</details>
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $details = $doc.Content[0]
+            $details | Should -BeOfType 'MarkdownDetails'
+            $details.Title | Should -Be 'Multi-line Title'
+        }
+
+        It 'Should parse a details block with summary spanning multiple lines' {
+            $md = "<details>`n<summary>Span`nAcross</summary>`n<p>`n`nBody`n`n</p>`n</details>"
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $details = $doc.Content[0]
+            $details | Should -BeOfType 'MarkdownDetails'
+            $details.Title | Should -Match 'Span'
+            $details.Title | Should -Match 'Across'
+        }
+    }
+
+    Context 'Table with missing values' {
+        It 'Should handle rows with fewer values than headings' {
+            $md = @'
+| A | B | C |
+| - | - | - |
+| 1 |
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $table = $doc.Content[0]
+            $table | Should -BeOfType 'MarkdownTable'
+            $table.Rows[0].A | Should -Be '1'
+            $table.Rows[0].B | Should -Be ''
+            $table.Rows[0].C | Should -Be ''
+        }
+    }
+
+    Context 'Deeply nested details closing' {
+        It 'Should correctly close nested details and return to parent scope' {
+            $md = @'
+# Title
+
+<details><summary>Outer</summary>
+<p>
+
+<details><summary>Middle</summary>
+<p>
+
+<details><summary>Inner</summary>
+<p>
+
+Deep content
+
+</p>
+</details>
+
+</p>
+</details>
+
+</p>
+</details>
+
+After details
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $header = $doc.Content[0]
+
+            # "After details" should be under the header, not inside any details
+            $texts = $header.Content | Where-Object { $_ -is [MarkdownText] }
+            $afterText = $texts | Where-Object { $_.Text -eq 'After details' }
+            $afterText | Should -Not -BeNullOrEmpty
+        }
+    }
+}
+
+Describe 'ConvertTo-Markdown Edge Cases' {
+    Context 'Table with null values' {
+        It 'Should render empty string for null property values' {
+            $doc = [MarkdownDocument]::new()
+            $row = [PSCustomObject]@{ Name = 'Test'; Value = $null }
+            $doc.Content += [MarkdownTable]::new(@($row))
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '\| Test \|  \|'
+        }
+    }
+
+    Context 'Untagged paragraph rendering' {
+        It 'Should render a paragraph without tags' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownParagraph]::new('No tags here')
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match 'No tags here'
+            $result | Should -Not -Match '<p>'
+        }
+    }
+}
+
+Describe 'Set-MarkdownTable Edge Cases' {
+    It 'Should warn when no objects are produced' {
+        $result = Set-MarkdownTable -InputScriptBlock { $null } 3>&1
+        $result | Should -BeLike '*No objects*'
+    }
+}
+
 AfterAll {
     $PSStyle.OutputRendering = 'Ansi'
 }

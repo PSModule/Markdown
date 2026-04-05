@@ -99,6 +99,27 @@
                     if ($i -lt $lines.Count -and $lines[$i] -match '^(.*)</summary>') {
                         $detailsTitle += $Matches[1]
                     }
+                } else {
+                    # No summary on this line; look ahead for <summary> on subsequent lines
+                    $i++
+                    while ($i -lt $lines.Count) {
+                        if ($lines[$i] -match '<summary>(.*?)</summary>') {
+                            $detailsTitle = $Matches[1]
+                            break
+                        } elseif ($lines[$i] -match '<summary>(.*)$') {
+                            $detailsTitle = $Matches[1]
+                            $i++
+                            while ($i -lt $lines.Count -and $lines[$i] -notmatch '</summary>') {
+                                $detailsTitle += $lines[$i]
+                                $i++
+                            }
+                            if ($i -lt $lines.Count -and $lines[$i] -match '^(.*)</summary>') {
+                                $detailsTitle += $Matches[1]
+                            }
+                            break
+                        }
+                        $i++
+                    }
                 }
 
                 $details = [MarkdownDetails]::new($detailsTitle)
