@@ -35,6 +35,10 @@
         .LINK
         https://psmodule.io/Markdown/Functions/ConvertFrom-Markdown/
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidOverwritingBuiltInCmdlets', '',
+        Justification = 'Intentional: this returns a structured AST, not HTML/VT100 like the built-in'
+    )]
     [OutputType([MarkdownDocument])]
     [CmdletBinding()]
     param(
