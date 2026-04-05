@@ -1,12 +1,12 @@
 ﻿function ConvertTo-Markdown {
     <#
         .SYNOPSIS
-        Converts a MarkdownDocument object tree into a markdown string.
+        Converts a MarkdownDocument object tree into a Markdown string.
 
         .DESCRIPTION
         The ConvertTo-Markdown function takes a structured MarkdownDocument object (as produced by
-        ConvertFrom-Markdown) and renders it back into a well-formatted markdown string.
-        This enables round-tripping: parse a markdown document into objects, transform it, and write it back.
+        ConvertFrom-Markdown) and renders it back into a well-formatted Markdown string.
+        This enables round-tripping: parse a Markdown document into objects, transform it, and write it back.
 
         .PARAMETER InputObject
         The MarkdownDocument object to convert. Accepts pipeline input.
@@ -15,7 +15,7 @@
         $doc = ConvertFrom-Markdown -InputObject $markdownString
         $doc | ConvertTo-Markdown
 
-        Round-trips a markdown string through the object model.
+        Round-trips a Markdown string through the object model.
 
         .EXAMPLE
         $doc = [MarkdownDocument]::new()
@@ -23,7 +23,7 @@
         $doc.Content += [MarkdownText]::new('World')
         ConvertTo-Markdown -InputObject $doc
 
-        Programmatically builds a document and renders it to markdown.
+        Programmatically builds a document and renders it to Markdown.
 
         .OUTPUTS
         string
@@ -34,7 +34,7 @@
     [OutputType([string])]
     [CmdletBinding()]
     param(
-        # The MarkdownDocument object to convert to a markdown string.
+        # The MarkdownDocument object to convert to a Markdown string.
         [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
         [MarkdownDocument] $InputObject
     )
