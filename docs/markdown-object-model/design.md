@@ -1,4 +1,5 @@
 ---
+title: Markdown object model — Design
 description: How the section tree is built, stored, traversed, and rendered, and why sections are the primary structure rather than a view over a flat block sequence.
 ---
 

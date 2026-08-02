@@ -1,4 +1,5 @@
 ---
+title: Markdown object model
 description: The capability that turns a Markdown document into a typed, section-oriented object model and back again.
 ---
 

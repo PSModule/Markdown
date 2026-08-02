@@ -1,4 +1,5 @@
 ---
+title: Markdown object model
 description: The typed object model a Markdown document parses into — a tree of sections that owns its content and renders back to specification-valid Markdown.
 ---
 
