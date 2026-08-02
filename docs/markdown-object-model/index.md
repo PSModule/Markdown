@@ -1,11 +1,10 @@
 ---
-title: Markdown object model
-description: The capability that turns a markdown document into a typed, section-oriented object model and back again.
+description: The capability that turns a Markdown document into a typed, section-oriented object model and back again.
 ---
 
 # Markdown object model
 
-Markdown text goes in, a typed object model comes out, and markdown comes back. The model is organised the way a document reads — a tree of sections, each owning its heading, its own content, and the sections nested inside it — so documentation automation manipulates structure instead of matching patterns in text.
+Markdown text goes in, a typed object model comes out, and Markdown comes back. The model is organised the way a document reads — a tree of sections, each owning its heading, its own content, and the sections nested inside it — so documentation automation manipulates structure instead of matching patterns in text.
 
 | Document | Answers |
 | --- | --- |
@@ -33,4 +32,4 @@ $doc.GetSection('Usage', 'Parameters').Children = $generated.Children
 $doc | ConvertTo-Markdown | Set-Content 'README.md'
 ```
 
-The composition DSL is a separate, complementary surface: `Set-Markdown*` is how markdown is written from nothing, the object model is how existing markdown is read and changed.
+The composition DSL is a separate, complementary surface: `Set-Markdown*` is how Markdown is written from nothing, the object model is how existing Markdown is read and changed.

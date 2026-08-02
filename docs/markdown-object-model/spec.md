@@ -1,23 +1,22 @@
 ---
-title: Markdown object model
-description: The typed object model a markdown document parses into — a tree of sections that owns its content and renders back to specification-valid markdown.
+description: The typed object model a Markdown document parses into — a tree of sections that owns its content and renders back to specification-valid Markdown.
 ---
 
 # Markdown object model
 
-A markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section owns its heading, its own content, and the sections nested inside it.
+A Markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to Markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section owns its heading, its own content, and the sections nested inside it.
 
 ## Why
 
 Markdown is edited by section. Automation extracts a named section from a README, replaces a generated section while leaving hand-written ones untouched, lifts a section and everything under it into another document, or asserts that every required section exists. Without an object model, each of these jobs is done with regular expressions against raw text — fragile against nesting, fenced code, and inline markup.
 
-A model that mirrors the specification's own block sequence does not solve this either. In that shape a heading is a leaf sitting next to the content it introduces, so a caller has to re-derive the outline — find the heading, scan forward to the next heading of the same or a lower level, slice — at every call site. The outline rules of markdown belong in the model, stated once.
+A model that mirrors the specification's own block sequence does not solve this either. In that shape a heading is a leaf sitting next to the content it introduces, so a caller has to re-derive the outline — find the heading, scan forward to the next heading of the same or a lower level, slice — at every call site. The outline rules of Markdown belong in the model, stated once.
 
 ## Outcomes and impact
 
 - **Outcome:** Markdown is read and rewritten as structured data, by section, with no text-level pattern matching and no outline arithmetic in caller code.
-- **DORA:** Lead time for changes improves for documentation-generating automation, which today re-implements markdown parsing per repository. Change-failure rate improves as generated-content updates stop corrupting hand-written sections.
-- **Domain signal:** The share of documentation automation across the ecosystem that manipulates markdown structurally rather than by string replacement.
+- **DORA:** Lead time for changes improves for documentation-generating automation, which today re-implements Markdown parsing per repository. Change-failure rate improves as generated-content updates stop corrupting hand-written sections.
+- **Domain signal:** The share of documentation automation across the ecosystem that manipulates Markdown structurally rather than by string replacement.
 
 ## Users and jobs
 
@@ -32,10 +31,10 @@ A model that mirrors the specification's own block sequence does not solve this 
 
 **In scope**
 
-- Parsing a markdown string into the object model.
+- Parsing a Markdown string into the object model.
 - Sections as the organising structure of the model, nested to any depth.
 - Every block and inline construct defined by [CommonMark](https://spec.commonmark.org/0.31.2/).
-- Rendering any node of the model back to markdown, whole document or single subtree.
+- Rendering any node of the model back to Markdown, whole document or single subtree.
 - Constructing a document from scratch, without parsing.
 - Addressing a section by its heading, including a path through nested headings.
 
@@ -43,81 +42,81 @@ A model that mirrors the specification's own block sequence does not solve this 
 
 - Markdown dialects beyond CommonMark, including tables, task list items, and strikethrough.
 - Parsing and emitting frontmatter content. The model reserves a place for it; interpreting it is separate work.
-- Heading anchors and slugs, which are a platform convention rather than a markdown construct.
+- Heading anchors and slugs, which are a platform convention rather than a Markdown construct.
 - Reading, writing, and locating files. The caller supplies text and decides where output lands.
 - Structural validation, normalisation, and formatting policy.
 
 ## Non-goals
 
 - **Byte-exact round-tripping.** Preserving every space and indentation detail would push insignificant whitespace into every node. The model preserves the stylistic choices a reader would notice and normalises the rest.
-- **Rendering to formats other than markdown.** The model is plain data, so any general-purpose serializer reaches other formats without the module owning a renderer for each.
-- **Replacing the composition DSL.** The `Set-Markdown*` functions stay the way markdown is composed imperatively. The object model is how existing markdown is read and transformed.
+- **Rendering to formats other than Markdown.** The model is plain data, so any general-purpose serializer reaches other formats without the module owning a renderer for each.
+- **Replacing the composition DSL.** The `Set-Markdown*` functions stay the way Markdown is composed imperatively. The object model is how existing Markdown is read and transformed.
 
 ## Functional requirements
 
-### FR1 — A markdown string parses into a typed object model { #fr1 }
+### FR1 — A Markdown string parses into a typed object model {#fr1}
 
 Parsing MUST accept any text valid under [CommonMark](https://spec.commonmark.org/0.31.2/) and MUST produce a typed object for every block and inline construct the specification defines. Parsing MUST NOT fail on structurally unusual but valid input.
 
-### FR2 — A section owns its heading and everything beneath it { #fr2 }
+### FR2 — A section owns its heading and everything beneath it {#fr2}
 
 A section MUST expose the heading that introduces it, the content that follows that heading, and the sections nested inside it. Content that follows a heading, up to the next heading of the same or a lower level, MUST belong to that section.
 
-### FR3 — A section without nested sections is the same kind of thing { #fr3 }
+### FR3 — A section without nested sections is the same kind of thing {#fr3}
 
 A section that has no nested sections MUST be the same type as one that does, holding an empty collection. There MUST NOT be a distinct type for leaf sections.
 
-### FR4 — A document is a section container without a heading { #fr4 }
+### FR4 — A document is a section container without a heading {#fr4}
 
 The document MUST be the same kind of container as a section, differing only in that it has no heading and carries the document's metadata part. Content appearing before the first heading MUST belong to the document.
 
-### FR5 — Sectioning applies wherever blocks appear { #fr5 }
+### FR5 — Sectioning applies wherever blocks appear {#fr5}
 
 Any construct that contains a sequence of blocks — the document, a section, a block quote, a list item — MUST group its own blocks into sections by the same rule. A heading inside a container MUST section that container and MUST NOT affect its ancestors.
 
-### FR6 — Heading level survives nesting { #fr6 }
+### FR6 — Heading level survives nesting {#fr6}
 
 A heading's level MUST be preserved independently of how deeply its section is nested. A document that skips a level MUST nest the deeper section directly under the shallower one, MUST NOT introduce a section that is not present in the document, and MUST re-render each heading at its original level. A document that starts below the first level, or whose heading levels rise again later, MUST parse without error.
 
-### FR7 — A section is addressable by its heading { #fr7 }
+### FR7 — A section is addressable by its heading {#fr7}
 
 A section MUST be reachable by its heading text and by a path of heading texts through nested sections, without the caller indexing into a collection or computing heading levels.
 
-### FR8 — The whole model is traversable in one walk { #fr8 }
+### FR8 — The whole model is traversable in one walk {#fr8}
 
 A single recursive traversal MUST reach every node in the model, without the caller branching on node type. Traversal MUST yield a section's heading before the section's content.
 
-### FR9 — A document can be built without parsing { #fr9 }
+### FR9 — A document can be built without parsing {#fr9}
 
-Every node MUST be constructible directly, so a document can be assembled in memory and rendered without any markdown text existing first.
+Every node MUST be constructible directly, so a document can be assembled in memory and rendered without any Markdown text existing first.
 
-### FR10 — Any node renders to specification-valid markdown { #fr10 }
+### FR10 — Any node renders to specification-valid Markdown {#fr10}
 
-Rendering MUST accept any node and MUST return markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as rendering its heading followed by its content in document order.
+Rendering MUST accept any node and MUST return Markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as rendering its heading followed by its content in document order.
 
-### FR11 — Round-tripping is semantically stable { #fr11 }
+### FR11 — Round-tripping is semantically stable {#fr11}
 
 Text parsed into the model, rendered, and parsed again MUST produce an equivalent model. Rendering MUST be idempotent from the second pass onward. Two models are equivalent when their content and structure match, regardless of where they were parsed from.
 
-### FR12 — Every parsed node records where it came from { #fr12 }
+### FR12 — Every parsed node records where it came from {#fr12}
 
 A node produced by parsing MUST record its position in the source text, so tooling can report diagnostics against line numbers. A node built directly MUST report no position, and position MUST be ignored when models are compared for equivalence.
 
-### FR13 — The composition DSL is unaffected { #fr13 }
+### FR13 — The composition DSL is unaffected {#fr13}
 
 The existing `Set-Markdown*` functions MUST keep working unchanged.
 
 ## Non-functional requirements
 
-### NFR1 — Conformance is measured against the specification's own examples { #nfr1 }
+### NFR1 — Conformance is measured against the specification's own examples {#nfr1}
 
 Every example published by [commonmark-spec](https://github.com/commonmark/commonmark-spec) MUST parse without error and MUST round-trip idempotently. Examples that cannot be satisfied MUST be recorded as known gaps rather than skipped silently.
 
-### NFR2 — Parsing is fast enough to use in a pipeline { #nfr2 }
+### NFR2 — Parsing is fast enough to use in a pipeline {#nfr2}
 
 A 1,000-line document MUST parse in under two seconds, and the conformance suite MUST complete within the repository's normal test job.
 
-### NFR3 — The model serializes with a general-purpose serializer { #nfr3 }
+### NFR3 — The model serializes with a general-purpose serializer {#nfr3}
 
 The object graph MUST be acyclic and MUST contain no node reachable by more than one path, so that converting a parsed document to JSON, YAML, or CLIXML produces complete output with no duplicated nodes and no special handling.
 

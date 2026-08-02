@@ -1,5 +1,4 @@
 ---
-title: Markdown object model — Design
 description: How the section tree is built, stored, traversed, and rendered, and why sections are the primary structure rather than a view over a flat block sequence.
 ---
 
@@ -80,7 +79,7 @@ A heading reaches the tree only as a section's `Heading`. Once sections exist, a
 | `Blocks()` | `MarkdownNode` | The blocks in `Children` that are not sections |
 | `GetSection([string[]] $path)` | `MarkdownNode` | The section reached by matching heading text at each step |
 | `GetText()` | `MarkdownNode` | The plain text of the subtree, markup removed |
-| `ToString()` | `MarkdownNode` | The markdown for the subtree |
+| `ToString()` | `MarkdownNode` | The Markdown for the subtree |
 | `[MarkdownHeading] Heading` | `MarkdownSection` | The heading that opens the section |
 | `[MarkdownFrontMatter] FrontMatter` | `MarkdownDocument` | The metadata part |
 
@@ -90,7 +89,7 @@ A heading reaches the tree only as a section's `Heading`. Once sections exist, a
 
 ### Sectioning
 
-The grouping pass runs after block parsing, over the child block sequence of each block container, before inline parsing. It is the only place the outline rules of markdown are expressed.
+The grouping pass runs after block parsing, over the child block sequence of each block container, before inline parsing. It is the only place the outline rules of Markdown are expressed.
 
 ```text
 sectionize(blocks):
@@ -154,4 +153,4 @@ Validation is not performed in property setters. A node accepts a state it canno
 
 The model ships as one release, before which nothing depends on its shape. It is delivered in slices — node types, block parsing, the grouping pass, inline parsing, rendering — and the conformance suite runs in a known-failing mode until the parsing slices are complete. The release does not go out while the suite is red.
 
-The composition DSL is untouched throughout. It writes markdown; the model reads and transforms it. Whether the DSL is eventually reimplemented on top of the model is a separate question, deliberately left open.
+The composition DSL is untouched throughout. It writes Markdown; the model reads and transforms it. Whether the DSL is eventually reimplemented on top of the model is a separate question, deliberately left open.
