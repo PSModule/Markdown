@@ -250,6 +250,624 @@ This is the end of the document
     }
 }
 
+Describe 'ConvertFrom-Markdown' {
+    Context 'Headings' {
+        It 'Should parse a level 1 heading' {
+            $md = @'
+# Main Title
+
+Some text
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $doc | Should -BeOfType 'MarkdownDocument'
+            $doc.Content[0] | Should -BeOfType 'MarkdownHeader'
+            $doc.Content[0].Level | Should -Be 1
+            $doc.Content[0].Title | Should -Be 'Main Title'
+        }
+
+        It 'Should parse nested headings with correct hierarchy' {
+            $md = @'
+# Top Level
+
+## Sub Section
+
+Sub text
+
+### Deep Section
+
+Deep text
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $doc.Content[0] | Should -BeOfType 'MarkdownHeader'
+            $doc.Content[0].Level | Should -Be 1
+            $doc.Content[0].Title | Should -Be 'Top Level'
+
+            $sub = $doc.Content[0].Content | Where-Object { $_ -is [MarkdownHeader] }
+            $sub | Should -Not -BeNullOrEmpty
+            $sub.Level | Should -Be 2
+            $sub.Title | Should -Be 'Sub Section'
+
+            $deep = $sub.Content | Where-Object { $_ -is [MarkdownHeader] }
+            $deep | Should -Not -BeNullOrEmpty
+            $deep.Level | Should -Be 3
+            $deep.Title | Should -Be 'Deep Section'
+        }
+
+        It 'Should parse multiple top-level headings as siblings' {
+            $md = @'
+# First
+
+# Second
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $headers = $doc.Content | Where-Object { $_ -is [MarkdownHeader] }
+            $headers.Count | Should -Be 2
+            $headers[0].Title | Should -Be 'First'
+            $headers[1].Title | Should -Be 'Second'
+        }
+
+        It 'Should handle heading level jumps (1 to 3)' {
+            $md = @'
+# Top
+
+### Skip to 3
+
+Text
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $doc.Content[0].Level | Should -Be 1
+            $nested = $doc.Content[0].Content | Where-Object { $_ -is [MarkdownHeader] }
+            $nested.Level | Should -Be 3
+        }
+    }
+
+    Context 'Code blocks' {
+        It 'Should parse a fenced code block with language' {
+            $md = @'
+```powershell
+Get-Process
+Get-Service
+```
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $cb = $doc.Content[0]
+            $cb | Should -BeOfType 'MarkdownCodeBlock'
+            $cb.Language | Should -Be 'powershell'
+            $cb.Code | Should -Be ("Get-Process{0}Get-Service" -f [Environment]::NewLine)
+        }
+
+        It 'Should parse a code block without language' {
+            $md = @'
+```
+some code
+```
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $cb = $doc.Content[0]
+            $cb | Should -BeOfType 'MarkdownCodeBlock'
+            $cb.Language | Should -Be ''
+            $cb.Code | Should -Be 'some code'
+        }
+    }
+
+    Context 'Paragraphs' {
+        It 'Should parse <p> tagged paragraphs' {
+            $md = @'
+<p>
+
+This is a tagged paragraph
+
+</p>
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $para = $doc.Content[0]
+            $para | Should -BeOfType 'MarkdownParagraph'
+            $para.Tags | Should -Be $true
+            $para.Content | Should -Be 'This is a tagged paragraph'
+        }
+    }
+
+    Context 'Tables' {
+        It 'Should parse a table with rows as PSCustomObjects' {
+            $md = @'
+| Name | Age |
+| - | - |
+| John Doe | 30 |
+| Jane Doe | 25 |
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $table = $doc.Content[0]
+            $table | Should -BeOfType 'MarkdownTable'
+            $table.Rows.Count | Should -Be 2
+            $table.Rows[0].Name | Should -Be 'John Doe'
+            $table.Rows[0].Age | Should -Be '30'
+            $table.Rows[1].Name | Should -Be 'Jane Doe'
+            $table.Rows[1].Age | Should -Be '25'
+        }
+    }
+
+    Context 'Details' {
+        It 'Should parse a details block with summary' {
+            $md = @'
+<details><summary>More Information</summary>
+<p>
+
+Details content here
+
+</p>
+</details>
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $details = $doc.Content[0]
+            $details | Should -BeOfType 'MarkdownDetails'
+            $details.Title | Should -Be 'More Information'
+        }
+
+        It 'Should parse nested details blocks' {
+            $md = @'
+<details><summary>Outer</summary>
+<p>
+
+Outer text
+
+<details><summary>Inner</summary>
+<p>
+
+Inner text
+
+</p>
+</details>
+
+</p>
+</details>
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $outer = $doc.Content[0]
+            $outer | Should -BeOfType 'MarkdownDetails'
+            $outer.Title | Should -Be 'Outer'
+
+            $inner = $outer.Content | Where-Object { $_ -is [MarkdownDetails] }
+            $inner | Should -Not -BeNullOrEmpty
+            $inner.Title | Should -Be 'Inner'
+        }
+    }
+
+    Context 'Plain text' {
+        It 'Should parse plain text as MarkdownText nodes' {
+            $md = @'
+Just some text
+Another line
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $texts = $doc.Content | Where-Object { $_ -is [MarkdownText] }
+            $texts.Count | Should -Be 2
+            $texts[0].Text | Should -Be 'Just some text'
+            $texts[1].Text | Should -Be 'Another line'
+        }
+
+        It 'Should place plain text under the correct header scope' {
+            $md = @'
+# Title
+
+Text under title
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $header = $doc.Content[0]
+            $header | Should -BeOfType 'MarkdownHeader'
+            $text = $header.Content | Where-Object { $_ -is [MarkdownText] }
+            $text | Should -Not -BeNullOrEmpty
+            $text.Text | Should -Be 'Text under title'
+        }
+    }
+
+    Context 'Empty document' {
+        It 'Should return an empty MarkdownDocument for blank input' {
+            $doc = ConvertFrom-Markdown -InputObject ''
+            $doc | Should -BeOfType 'MarkdownDocument'
+            $doc.Content.Count | Should -Be 0
+        }
+    }
+
+    Context 'Pipeline input' {
+        It 'Should accept input from pipeline' {
+            $md = '# Pipeline Test'
+            $doc = $md | ConvertFrom-Markdown
+            $doc.Content[0].Title | Should -Be 'Pipeline Test'
+        }
+    }
+}
+
+Describe 'ConvertTo-Markdown' {
+    Context 'Headings' {
+        It 'Should render a heading with correct level' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownHeader]::new(2, 'Test Title')
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -BeLike '## Test Title*'
+        }
+
+        It 'Should render nested headings' {
+            $doc = [MarkdownDocument]::new()
+            $h1 = [MarkdownHeader]::new(1, 'Top')
+            $h2 = [MarkdownHeader]::new(2, 'Sub')
+            $h1.Content += $h2
+            $doc.Content += $h1
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '# Top'
+            $result | Should -Match '## Sub'
+        }
+    }
+
+    Context 'Code blocks' {
+        It 'Should render a fenced code block with language' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownCodeBlock]::new('powershell', 'Get-Process')
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '```powershell'
+            $result | Should -Match 'Get-Process'
+            $result | Should -Match '```'
+        }
+    }
+
+    Context 'Paragraphs' {
+        It 'Should render a tagged paragraph with <p> tags' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownParagraph]::new('Tagged content', $true)
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '<p>'
+            $result | Should -Match 'Tagged content'
+            $result | Should -Match '</p>'
+        }
+
+        It 'Should render an untagged paragraph without <p> tags' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownParagraph]::new('Plain content', $false)
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match 'Plain content'
+            $result | Should -Not -Match '<p>'
+        }
+    }
+
+    Context 'Tables' {
+        It 'Should render a table with header and rows' {
+            $doc = [MarkdownDocument]::new()
+            $rows = @(
+                [PSCustomObject]@{ Name = 'John'; Age = '30' }
+                [PSCustomObject]@{ Name = 'Jane'; Age = '25' }
+            )
+            $doc.Content += [MarkdownTable]::new($rows)
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '\| Name \| Age \|'
+            $result | Should -Match '\| - \| - \|'
+            $result | Should -Match '\| John \| 30 \|'
+            $result | Should -Match '\| Jane \| 25 \|'
+        }
+    }
+
+    Context 'Details' {
+        It 'Should render a details block with summary' {
+            $doc = [MarkdownDocument]::new()
+            $details = [MarkdownDetails]::new('Summary Title')
+            $details.Content += [MarkdownText]::new('Details body')
+            $doc.Content += $details
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '<details><summary>Summary Title</summary>'
+            $result | Should -Match 'Details body'
+            $result | Should -Match '</details>'
+        }
+    }
+
+    Context 'Text' {
+        It 'Should render MarkdownText as plain text lines' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownText]::new('Hello world')
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Be 'Hello world'
+        }
+    }
+
+    Context 'Pipeline input' {
+        It 'Should accept input from pipeline' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownHeader]::new(1, 'Pipeline')
+            $result = $doc | ConvertTo-Markdown
+            $result | Should -Match '# Pipeline'
+        }
+    }
+}
+
+Describe 'Markdown Round-Trip' {
+    It 'Should preserve structure through a round-trip for headings and text' {
+        $md = @'
+# Title
+
+Some text
+
+## Sub Title
+
+More text
+'@
+        $doc = ConvertFrom-Markdown -InputObject $md
+        $result = ConvertTo-Markdown -InputObject $doc
+        $result | Should -Match '# Title'
+        $result | Should -Match 'Some text'
+        $result | Should -Match '## Sub Title'
+        $result | Should -Match 'More text'
+    }
+
+    It 'Should preserve structure through a round-trip for code blocks' {
+        $md = @'
+```powershell
+Get-Process
+```
+'@
+        $doc = ConvertFrom-Markdown -InputObject $md
+        $result = ConvertTo-Markdown -InputObject $doc
+        $result | Should -Match '```powershell'
+        $result | Should -Match 'Get-Process'
+        $result | Should -Match '```'
+    }
+
+    It 'Should preserve structure through a round-trip for tables' {
+        $md = @'
+| Name | Age |
+| - | - |
+| John | 30 |
+| Jane | 25 |
+'@
+        $doc = ConvertFrom-Markdown -InputObject $md
+        $result = ConvertTo-Markdown -InputObject $doc
+        $result | Should -Match '\| Name \| Age \|'
+        $result | Should -Match '\| John \| 30 \|'
+        $result | Should -Match '\| Jane \| 25 \|'
+    }
+
+    It 'Should preserve structure through a round-trip for details blocks' {
+        $md = @'
+<details><summary>Info</summary>
+<p>
+
+Content here
+
+</p>
+</details>
+'@
+        $doc = ConvertFrom-Markdown -InputObject $md
+        $result = ConvertTo-Markdown -InputObject $doc
+        $result | Should -Match '<details><summary>Info</summary>'
+        $result | Should -Match 'Content here'
+        $result | Should -Match '</details>'
+    }
+
+    It 'Should round-trip a complex document' {
+        $md = @'
+# Main
+
+Intro text
+
+## Features
+
+<details><summary>Feature Details</summary>
+<p>
+
+Feature description
+
+```powershell
+Get-Feature
+```
+
+</p>
+</details>
+
+| Name | Value |
+| - | - |
+| A | 1 |
+| B | 2 |
+'@
+        $doc = ConvertFrom-Markdown -InputObject $md
+        $result = ConvertTo-Markdown -InputObject $doc
+        $result | Should -Match '# Main'
+        $result | Should -Match 'Intro text'
+        $result | Should -Match '## Features'
+        $result | Should -Match '<details><summary>Feature Details</summary>'
+        $result | Should -Match 'Feature description'
+        $result | Should -Match '```powershell'
+        $result | Should -Match 'Get-Feature'
+        $result | Should -Match '\| Name \| Value \|'
+        $result | Should -Match '\| A \| 1 \|'
+    }
+}
+
+Describe 'Class Constructors' {
+    Context 'MarkdownText' {
+        It 'Should create an empty MarkdownText with parameterless constructor' {
+            $node = [MarkdownText]::new()
+            $node.Text | Should -Be ''
+        }
+    }
+
+    Context 'MarkdownParagraph' {
+        It 'Should create an empty MarkdownParagraph with parameterless constructor' {
+            $node = [MarkdownParagraph]::new()
+            $node.Content | Should -Be ''
+            $node.Tags | Should -Be $false
+        }
+
+        It 'Should create a MarkdownParagraph with content only (Tags defaults to false)' {
+            $node = [MarkdownParagraph]::new('Hello')
+            $node.Content | Should -Be 'Hello'
+            $node.Tags | Should -Be $false
+        }
+    }
+
+    Context 'MarkdownCodeBlock' {
+        It 'Should create an empty MarkdownCodeBlock with parameterless constructor' {
+            $node = [MarkdownCodeBlock]::new()
+            $node.Language | Should -Be ''
+            $node.Code | Should -Be ''
+        }
+    }
+
+    Context 'MarkdownTable' {
+        It 'Should create an empty MarkdownTable with parameterless constructor' {
+            $node = [MarkdownTable]::new()
+            $node.Rows | Should -Be @()
+        }
+    }
+
+    Context 'MarkdownDetails' {
+        It 'Should create an empty MarkdownDetails with parameterless constructor' {
+            $node = [MarkdownDetails]::new()
+            $node.Title | Should -Be ''
+            $node.Content | Should -Be @()
+        }
+
+        It 'Should create a MarkdownDetails with title and content' {
+            $child = [MarkdownText]::new('child')
+            $node = [MarkdownDetails]::new('My Title', @($child))
+            $node.Title | Should -Be 'My Title'
+            $node.Content.Count | Should -Be 1
+        }
+    }
+
+    Context 'MarkdownHeader' {
+        It 'Should create an empty MarkdownHeader with parameterless constructor' {
+            $node = [MarkdownHeader]::new()
+            $node.Level | Should -Be 1
+            $node.Title | Should -Be ''
+            $node.Content | Should -Be @()
+        }
+
+        It 'Should create a MarkdownHeader with level, title and content' {
+            $child = [MarkdownText]::new('child')
+            $node = [MarkdownHeader]::new(3, 'Title', @($child))
+            $node.Level | Should -Be 3
+            $node.Title | Should -Be 'Title'
+            $node.Content.Count | Should -Be 1
+        }
+    }
+
+    Context 'MarkdownDocument' {
+        It 'Should create a MarkdownDocument with initial content' {
+            $child = [MarkdownText]::new('child')
+            $doc = [MarkdownDocument]::new(@($child))
+            $doc.Content.Count | Should -Be 1
+        }
+    }
+}
+
+Describe 'ConvertFrom-Markdown Edge Cases' {
+    Context 'Multi-line summary' {
+        It 'Should parse a details block with summary on a separate line' {
+            $md = @'
+<details>
+<summary>Multi-line Title</summary>
+<p>
+
+Content inside
+
+</p>
+</details>
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $details = $doc.Content[0]
+            $details | Should -BeOfType 'MarkdownDetails'
+            $details.Title | Should -Be 'Multi-line Title'
+        }
+
+        It 'Should parse a details block with summary spanning multiple lines' {
+            $md = "<details>`n<summary>Span`nAcross</summary>`n<p>`n`nBody`n`n</p>`n</details>"
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $details = $doc.Content[0]
+            $details | Should -BeOfType 'MarkdownDetails'
+            $details.Title | Should -Match 'Span'
+            $details.Title | Should -Match 'Across'
+        }
+    }
+
+    Context 'Table with missing values' {
+        It 'Should handle rows with fewer values than headings' {
+            $md = @'
+| A | B | C |
+| - | - | - |
+| 1 |
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $table = $doc.Content[0]
+            $table | Should -BeOfType 'MarkdownTable'
+            $table.Rows[0].A | Should -Be '1'
+            $table.Rows[0].B | Should -Be ''
+            $table.Rows[0].C | Should -Be ''
+        }
+    }
+
+    Context 'Deeply nested details closing' {
+        It 'Should correctly close nested details and return to parent scope' {
+            $md = @'
+# Title
+
+<details><summary>Outer</summary>
+<p>
+
+<details><summary>Middle</summary>
+<p>
+
+<details><summary>Inner</summary>
+<p>
+
+Deep content
+
+</p>
+</details>
+
+</p>
+</details>
+
+</p>
+</details>
+
+After details
+'@
+            $doc = ConvertFrom-Markdown -InputObject $md
+            $header = $doc.Content[0]
+
+            # "After details" should be under the header, not inside any details
+            $texts = $header.Content | Where-Object { $_ -is [MarkdownText] }
+            $afterText = $texts | Where-Object { $_.Text -eq 'After details' }
+            $afterText | Should -Not -BeNullOrEmpty
+        }
+    }
+}
+
+Describe 'ConvertTo-Markdown Edge Cases' {
+    Context 'Table with null values' {
+        It 'Should render empty string for null property values' {
+            $doc = [MarkdownDocument]::new()
+            $row = [PSCustomObject]@{ Name = 'Test'; Value = $null }
+            $doc.Content += [MarkdownTable]::new(@($row))
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match '\| Test \|  \|'
+        }
+    }
+
+    Context 'Untagged paragraph rendering' {
+        It 'Should render a paragraph without tags' {
+            $doc = [MarkdownDocument]::new()
+            $doc.Content += [MarkdownParagraph]::new('No tags here')
+            $result = ConvertTo-Markdown -InputObject $doc
+            $result | Should -Match 'No tags here'
+            $result | Should -Not -Match '<p>'
+        }
+    }
+}
+
+Describe 'Set-MarkdownTable Edge Cases' {
+    It 'Should warn when no objects are produced' {
+        $result = Set-MarkdownTable -InputScriptBlock { $null } 3>&1
+        $result | Should -BeLike '*No objects*'
+    }
+}
+
 AfterAll {
     $PSStyle.OutputRendering = 'Ansi'
 }
