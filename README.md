@@ -320,6 +320,42 @@ This is the end of the document
 
 ````
 
+## Conversion Functions
+
+### ConvertFrom-MarkdownMarkdown
+
+Parses a Markdown file into a structured object tree containing headers, paragraphs, code blocks, tables, and details sections — enabling programmatic inspection and transformation.
+
+```powershell
+$obj = ConvertFrom-MarkdownMarkdown -Path ".\README.md"
+$obj.Content          # Top-level elements
+$obj.Content[0].Title # First heading title
+```
+
+### ConvertTo-MarkdownDSL
+
+Converts a structured Markdown object (from `ConvertFrom-MarkdownMarkdown`) back into a DSL script block (or string with `-AsString`). This enables **round-tripping**: read a Markdown file, then regenerate or modify it as DSL.
+
+```powershell
+# Object → executable DSL script block
+$dsl = ConvertTo-MarkdownDSL -InputObject $obj
+& $dsl  # Produces the original Markdown output
+
+# Object → DSL string (useful for saving or inspecting)
+$dslString = ConvertTo-MarkdownDSL -InputObject $obj -AsString
+```
+
+Use `-DontQuoteString` to keep content unquoted (e.g. for raw code).
+
+### Round-Trip Example
+
+```powershell
+# Parse an existing Markdown file into an object, convert to DSL, and execute it
+$obj = ConvertFrom-MarkdownMarkdown -Path ".\example.md"
+$dsl = ConvertTo-MarkdownDSL -InputObject $obj
+& $dsl  # Regenerates the Markdown
+```
+
 ## Contributing
 
 Whether you’re a user with valuable feedback or a developer with innovative ideas, your contributions are welcome. Here’s how you can get involved:
