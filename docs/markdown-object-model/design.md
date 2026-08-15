@@ -330,13 +330,13 @@ Nesting depth is *not* the level. `Level` stays the only source of truth for ren
 | `Literal` | `[string]` | Raw HTML, verbatim. |
 | `Kind` | `[int]` | 1–7, the block type from the specification. Determines the termination condition on re-parse. |
 
-**`MarkdownCommentBlock : MarkdownBlock`** — [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks). A block that is exactly a comment ([FR15](spec.md#fr15)). A block carrying a comment plus trailing content on the same line stays a `MarkdownHtmlBlock`.
+**`MarkdownCommentBlock : MarkdownBlock`** — [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks). A block that is exactly a comment ([FR15](spec.md#fr15)). A block carrying a comment plus trailing content on the same line stays a `MarkdownHtmlBlock`. An unterminated comment ends with the container holding it, or with the document when nothing encloses it ([FR17](spec.md#fr17)).
 
 | Property | Type | Notes |
 | --- | --- | --- |
 | `Text` | `[string]` | The inner text, without the `<!--` and `-->` delimiters. Empty for the degenerate forms. |
 | `Raw` | `[string]` | *style.* The comment exactly as written, so `<!-- x -->` does not re-render as `<!--x-->`. |
-| `IsTerminated` | `[bool]` | `$false` when the comment ran to the end of the document with no line containing `-->`. |
+| `IsTerminated` | `[bool]` | `$false` when no subsequent line contained `-->`, so the comment ended with its container rather than with a terminator. |
 
 **`MarkdownLinkReferenceDefinition : MarkdownBlock`** — [§4.7](https://spec.commonmark.org/0.31.2/#link-reference-definitions)
 

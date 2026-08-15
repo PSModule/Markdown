@@ -123,9 +123,9 @@ A block is a comment only when the block is exactly a comment. [CommonMark](http
 
 A comment MUST expose its inner text without the `<!--` and `-->` delimiters, so that reading a comment requires no string handling by the caller. It MUST also expose whether the comment was terminated in the source.
 
-### FR17 — An unterminated comment runs to the end of the document {#fr17}
+### FR17 — An unterminated comment ends with its container {#fr17}
 
-Where no line containing `-->` follows, the comment MUST extend to the last line of the document, which is the end condition [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks) defines. The model MUST record the comment as unterminated rather than presenting it as closed.
+Where no subsequent line contains `-->`, the comment MUST extend to the last line of the block container holding it, and to the last line of the document only when no container encloses it. [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks) gives both endings: an HTML block ends at "the last line of the document, or the last line of the container block containing the current HTML block, if no line is encountered that meets the end condition". An unterminated comment inside a block quote or a list item therefore ends with that block quote or list item, and content following the container is unaffected. The model MUST record the comment as unterminated rather than presenting it as closed.
 
 ### FR18 — The degenerate comment forms are comments {#fr18}
 
@@ -239,6 +239,14 @@ Feature: Comments are part of the model
     When the document is parsed
     Then the comment extends to the last line of the document
     And it reports that it was not terminated
+
+  Scenario: An unterminated comment inside a container ends with that container
+    Given a block quote containing an opening comment delimiter and no terminator
+    And a paragraph following the block quote
+    When the document is parsed
+    Then the comment extends to the last line of the block quote
+    And it reports that it was not terminated
+    And the paragraph following the block quote is not part of the comment
 
   Scenario: Comment-looking text in code stays code
     Given a fenced code block whose content looks like a comment
