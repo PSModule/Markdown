@@ -5,7 +5,7 @@ description: The typed object model a Markdown document parses into — a tree o
 
 # Markdown object model
 
-A Markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to Markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section owns its heading, its own content, and the sections nested inside it.
+A Markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to Markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section carries the heading that opens it, its own content, and the sections nested inside it.
 
 ## Why
 
@@ -59,9 +59,9 @@ A model that mirrors the specification's own block sequence does not solve this 
 
 Parsing MUST accept any text valid under [CommonMark](https://spec.commonmark.org/0.31.2/) and MUST produce a typed object for every block and inline construct the specification defines. Parsing MUST NOT fail on structurally unusual but valid input.
 
-### FR2 — A section owns its heading and everything beneath it {#fr2}
+### FR2 — A section carries its heading and owns everything beneath it {#fr2}
 
-A section MUST expose the heading that introduces it, the content that follows that heading, and the sections nested inside it. Content that follows a heading, up to the next heading of the same or a lower level, MUST belong to that section.
+A section MUST expose the level, the title, and the heading style of the heading that introduces it, together with the content that follows that heading and the sections nested inside it. There MUST NOT be a separate node type for a heading. The title MUST be held as inline nodes, so that markup written inside a heading survives a parse and render cycle, and a section MUST also expose its title as plain text. Content that follows a heading, up to the next heading of the same or a lower level, MUST belong to that section.
 
 ### FR3 — A section without nested sections is the same kind of thing {#fr3}
 
@@ -69,7 +69,7 @@ A section that has no nested sections MUST be the same type as one that does, ho
 
 ### FR4 — A document is a section container without a heading {#fr4}
 
-The document MUST be the same kind of container as a section, differing only in that it has no heading and carries the document's metadata part. Content appearing before the first heading MUST belong to the document.
+The document MUST be the same kind of container as a section, differing only in that it carries no heading level, title, or style, and carries the document's metadata part instead. Content appearing before the first heading MUST belong to the document.
 
 ### FR5 — Sectioning applies wherever blocks appear {#fr5}
 
@@ -77,15 +77,15 @@ Any construct that contains a sequence of blocks — the document, a section, a 
 
 ### FR6 — Heading level survives nesting {#fr6}
 
-A heading's level MUST be preserved independently of how deeply its section is nested. A document that skips a level MUST nest the deeper section directly under the shallower one, MUST NOT introduce a section that is not present in the document, and MUST re-render each heading at its original level. A document that starts below the first level, or whose heading levels rise again later, MUST parse without error.
+A section's level MUST be preserved independently of how deeply that section is nested. A document that skips a level MUST nest the deeper section directly under the shallower one, MUST NOT introduce a section that is not present in the document, and MUST re-render each section at its original level. A document that starts below the first level, or whose heading levels rise again later, MUST parse without error.
 
 ### FR7 — A section is addressable by its heading {#fr7}
 
-A section MUST be reachable by its heading text and by a path of heading texts through nested sections, without the caller indexing into a collection or computing heading levels.
+A section MUST be reachable by its title text and by a path of title texts through nested sections, without the caller indexing into a collection or computing heading levels.
 
 ### FR8 — The whole model is traversable in one walk {#fr8}
 
-A single recursive traversal MUST reach every node in the model, without the caller branching on node type. Traversal MUST yield a section's heading before the section's content.
+A single recursive traversal MUST reach every node in the model, without the caller branching on node type. The inline nodes a section holds as its title MUST be reached by that traversal, before the section's content.
 
 ### FR9 — A document can be built without parsing {#fr9}
 
@@ -93,7 +93,7 @@ Every node MUST be constructible directly, so a document can be assembled in mem
 
 ### FR10 — Any node renders to specification-valid Markdown {#fr10}
 
-Rendering MUST accept any node and MUST return Markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as rendering its heading followed by its content in document order.
+Rendering MUST accept any node and MUST return Markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as its heading line, reconstructed from its level, title, and style, followed by its content in document order.
 
 ### FR11 — Round-tripping is semantically stable {#fr11}
 
@@ -143,6 +143,12 @@ Feature: Sections own their content
     Then that section holds no nested sections
     And it is the same type as a section that has them
 
+  Scenario: A section title keeps its inline markup
+    Given a document whose heading contains emphasis and a code span
+    When the document is parsed
+    Then the section's title holds that emphasis and code span as inline nodes
+    And rendering the section reproduces the heading with its markup intact
+
   Scenario: Content before the first heading belongs to the document
     Given a document that opens with a paragraph before any heading
     When the document is parsed
@@ -165,7 +171,7 @@ Feature: Sections own their content
   Scenario: A section renders on its own
     Given a parsed document containing a section with nested sections
     When that section is rendered
-    Then the result is its heading followed by its content and nested sections
+    Then the result is its heading line followed by its content and nested sections
     And the result parses back to an equivalent section
 
   Scenario: Rendering is stable
