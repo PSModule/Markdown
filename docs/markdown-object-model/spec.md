@@ -113,6 +113,32 @@ A chain of sections nested one inside another MUST NOT exceed six. Sections nest
 
 Total depth of the model MUST NOT be bounded. Sectioning restarts inside every block container, and a heading is legal inside a block quote and inside a list item, so a block quote nested in a level six section may hold a section of its own at level one. The bound is six levels of sectioning per container, across an unlimited number of containers.
 
+### FR15 — A comment is a node of the model {#fr15}
+
+A comment MUST be its own kind of node rather than opaque raw HTML, at block level and at inline level alike, and every comment MUST report the same construct name so that one query finds all of them.
+
+A block is a comment only when the block is exactly a comment. [CommonMark](https://spec.commonmark.org/0.31.2/#html-blocks) ends an HTML block at the first line containing `-->`, and whatever follows the terminator on that line belongs to the same block — in [example 172](https://spec.commonmark.org/0.31.2/#example-172), `<!-- foo -->*bar*` is one HTML block in which `*bar*` is not emphasized. A block whose comment is followed by other content on the same line MUST therefore stay an HTML block, because promoting it would discard the trailing content.
+
+### FR16 — A comment exposes its text and whether it was terminated {#fr16}
+
+A comment MUST expose its inner text without the `<!--` and `-->` delimiters, so that reading a comment requires no string handling by the caller. It MUST also expose whether the comment was terminated in the source.
+
+### FR17 — An unterminated comment runs to the end of the document {#fr17}
+
+Where no line containing `-->` follows, the comment MUST extend to the last line of the document, which is the end condition [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks) defines. The model MUST record the comment as unterminated rather than presenting it as closed.
+
+### FR18 — The degenerate comment forms are comments {#fr18}
+
+`<!-->` and `<!--->` are comments under [§6.6](https://spec.commonmark.org/0.31.2/#raw-html). Both MUST parse as comments, MUST carry no inner text, and MUST render back exactly as written.
+
+### FR19 — A comment's delimiters and inner spacing are preserved {#fr19}
+
+A comment MUST re-render in the form it was written, so `<!-- x -->` MUST NOT become `<!--x-->`. Preservation of the written form is independent of the inner text a caller reads.
+
+### FR20 — Comment-looking text inside code is not a comment {#fr20}
+
+Text resembling a comment inside a code span, a fenced code block, or an indented code block is code content. It MUST NOT be recognised as a comment, and it MUST render back unchanged.
+
 ## Non-functional requirements
 
 ### NFR1 — Conformance is measured against the specification's own examples {#nfr1}
@@ -191,6 +217,34 @@ Feature: Sections own their content
     When it is parsed, rendered, and parsed again
     Then the two models are equivalent
     And rendering the second model produces identical text
+```
+
+```gherkin
+Feature: Comments are part of the model
+
+  Scenario: A block that is exactly a comment is a comment
+    Given a document containing a line that holds only a comment
+    When the document is parsed
+    Then that block is a comment
+    And its text is the comment content without the delimiters
+
+  Scenario: A comment with trailing content stays an HTML block
+    Given a document containing the line "<!-- foo -->*bar*"
+    When the document is parsed
+    Then that block is an HTML block
+    And the trailing content is retained verbatim
+
+  Scenario: An unterminated comment reaches the end of the document
+    Given a document containing an opening comment delimiter and no terminator
+    When the document is parsed
+    Then the comment extends to the last line of the document
+    And it reports that it was not terminated
+
+  Scenario: Comment-looking text in code stays code
+    Given a fenced code block whose content looks like a comment
+    When the document is parsed
+    Then the document reports no comment
+    And the code block content renders back unchanged
 ```
 
 ## Constraints and assumptions
