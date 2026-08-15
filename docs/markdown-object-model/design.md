@@ -57,7 +57,69 @@ flowchart TD
 
     PA --> IL{{"inline level"}}
     SE -->|Title| IL
+
+    IL --> EM["MarkdownEmphasis<br>MarkdownStrongEmphasis"]
+    IL --> LK["MarkdownLink<br>MarkdownImage"]
+    IL --> LFI["MarkdownText<br>MarkdownCodeSpan<br>MarkdownAutolink<br>MarkdownRawHtml<br>MarkdownHardLineBreak<br>MarkdownSoftLineBreak"]
+
+    EM --> IL
+    LK --> IL
 ```
+
+The type system does not enforce these rules. `Children` is `[MarkdownNode[]]` on every node, which is what lets one walk cover the whole tree and one serializer handle the result. The parser produces only valid nesting, and the renderer throws on nesting it cannot express.
+
+### A worked example
+
+This document:
+
+```markdown
+# Setup
+
+Install with `Install-PSResource`.
+
+- Step one
+- Step **two**
+```
+
+parses to this model:
+
+```mermaid
+flowchart TD
+    D["MarkdownDocument"]
+    SEC["MarkdownSection<br>Level = 1<br>Style = Atx"]
+    HT["MarkdownText<br>Setup"]
+    P["MarkdownParagraph"]
+    PT1["MarkdownText<br>Install with"]
+    PC["MarkdownCodeSpan<br>Install-PSResource"]
+    PT2["MarkdownText<br>."]
+    L["MarkdownList<br>Kind = Bullet<br>IsTight = true"]
+    LI1["MarkdownListItem"]
+    LI2["MarkdownListItem"]
+    P1["MarkdownParagraph"]
+    P2["MarkdownParagraph"]
+    T1["MarkdownText<br>Step one"]
+    T2["MarkdownText<br>Step"]
+    S["MarkdownStrongEmphasis<br>Marker = Asterisk"]
+    T3["MarkdownText<br>two"]
+
+    D --> SEC
+    SEC -->|Title| HT
+    SEC --> P
+    SEC --> L
+    P --> PT1
+    P --> PC
+    P --> PT2
+    L --> LI1
+    L --> LI2
+    LI1 --> P1
+    LI2 --> P2
+    P1 --> T1
+    P2 --> T2
+    P2 --> S
+    S --> T3
+```
+
+Four things this makes concrete. The document holds one child, and everything under `# Setup` hangs off it — the paragraph and the list are content *of the section*, not siblings of a heading. The heading itself is not a node: its level and style are section properties, and its text is the section's `Title`. List items contain *blocks*, so the content of a one-line item is still a paragraph. And emphasis contains inlines rather than a string, which is why `**two**` is a `MarkdownStrongEmphasis` wrapping a `MarkdownText`.
 
 ## Alternatives considered
 
@@ -74,29 +136,304 @@ flowchart TD
 
 ## Architecture
 
-### Node members
+The schema below is the complete node inventory: every class, every property, and the specification section it derives from. Properties marked *style* exist only so the renderer can reproduce the source form; they carry no semantic content, and a consumer that does not render Markdown can ignore them.
 
-| Member | On | Purpose |
+### Type hierarchy
+
+Three levels, and `Type` as a plain string on each node — `Section`, `Paragraph`, `Text`, without the `Markdown` prefix — so `Where-Object Type -EQ 'Section'` works without class names in scope and `ConvertTo-Json` output is self-describing.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class MarkdownNode {
+        <<abstract>>
+        +String Type
+        +MarkdownNode[] Children
+        +MarkdownSourceSpan Source
+        +Descendants() MarkdownNode[]
+        +GetText() String
+        +ToString() String
+    }
+    class MarkdownBlock {
+        <<abstract>>
+    }
+    class MarkdownInline {
+        <<abstract>>
+    }
+    class MarkdownFrontMatter {
+        +MarkdownFrontMatterFormat Format
+        +String Raw
+        +Object Data
+    }
+    class MarkdownSourceSpan {
+        +Int StartLine
+        +Int StartColumn
+        +Int EndLine
+        +Int EndColumn
+    }
+
+    MarkdownNode <|-- MarkdownBlock
+    MarkdownNode <|-- MarkdownInline
+    MarkdownNode --> MarkdownSourceSpan : Source
+
+    MarkdownBlock <|-- MarkdownDocument
+    MarkdownBlock <|-- MarkdownSection
+    MarkdownBlock <|-- MarkdownParagraph
+    MarkdownBlock <|-- MarkdownThematicBreak
+    MarkdownBlock <|-- MarkdownIndentedCodeBlock
+    MarkdownBlock <|-- MarkdownFencedCodeBlock
+    MarkdownBlock <|-- MarkdownHtmlBlock
+    MarkdownBlock <|-- MarkdownLinkReferenceDefinition
+    MarkdownBlock <|-- MarkdownBlockQuote
+    MarkdownBlock <|-- MarkdownList
+    MarkdownBlock <|-- MarkdownListItem
+
+    MarkdownInline <|-- MarkdownText
+    MarkdownInline <|-- MarkdownCodeSpan
+    MarkdownInline <|-- MarkdownEmphasis
+    MarkdownInline <|-- MarkdownStrongEmphasis
+    MarkdownInline <|-- MarkdownLink
+    MarkdownInline <|-- MarkdownImage
+    MarkdownInline <|-- MarkdownAutolink
+    MarkdownInline <|-- MarkdownRawHtml
+    MarkdownInline <|-- MarkdownHardLineBreak
+    MarkdownInline <|-- MarkdownSoftLineBreak
+
+    MarkdownDocument --> MarkdownFrontMatter : FrontMatter
+    MarkdownSection --> MarkdownInline : Title
+```
+
+CommonMark's prose separates *container* blocks from *leaf* blocks, but that is a parsing concept rather than a modelling one, so the class hierarchy does not reflect it. The block and inline split is kept because filtering on it is genuinely useful.
+
+`MarkdownFrontMatter` and `MarkdownSourceSpan` are not nodes. They hang off nodes as properties and never appear in `Children`.
+
+### Shared members
+
+`MarkdownNode` is the abstract base of every node. `MarkdownBlock` and `MarkdownInline` derive from it and add nothing.
+
+| Member | Type | Notes |
 | --- | --- | --- |
-| `[string] Type` | `MarkdownNode` | The construct name, stable across serialization |
-| `[MarkdownNode[]] Children` | `MarkdownNode` | The only storage for contained nodes, in document order |
-| `[MarkdownSourceSpan] Source` | `MarkdownNode` | Where the node was parsed from; `$null` for nodes built directly |
-| `Descendants()` | `MarkdownNode` | Depth-first walk of the whole subtree |
-| `Descendants([string] $type)` | `MarkdownNode` | The same walk, filtered by construct name |
-| `Sections()` | `MarkdownNode` | The nested sections in `Children` |
-| `Blocks()` | `MarkdownNode` | The blocks in `Children` that are not sections |
-| `GetSection([string[]] $path)` | `MarkdownNode` | The section reached by matching title text at each step |
-| `GetText()` | `MarkdownNode` | The plain text of the subtree, markup removed |
-| `ToString()` | `MarkdownNode` | The Markdown for the subtree |
-| `[int] Level` | `MarkdownSection` | The heading level, as written |
-| `[MarkdownInline[]] Title` | `MarkdownSection` | The heading text, as inline nodes |
-| `[MarkdownHeadingStyle] Style` | `MarkdownSection` | How the heading was written |
-| `GetTitleText()` | `MarkdownSection` | The title as plain text, markup removed |
-| `[MarkdownFrontMatter] FrontMatter` | `MarkdownDocument` | The metadata part |
+| `Type` | `[string]` | The node name without the `Markdown` prefix. Read-only. |
+| `Children` | `[MarkdownNode[]]` | Direct children in document order. Empty for leaves, never `$null`. |
+| `Source` | `[MarkdownSourceSpan]` | Where the node came from in the source text. `$null` for nodes built by hand. |
+| `Descendants()` | `[MarkdownNode[]]` | Every node beneath this one, depth-first, document order. A section's title inlines are yielded before its children. |
+| `Descendants([string] $type)` | `[MarkdownNode[]]` | The same, filtered to one `Type`. |
+| `GetText()` | `[string]` | Concatenated text content of the subtree, markup stripped. |
+| `ToString()` | `[string]` | The subtree rendered as Markdown, by delegating to the renderer. |
+| `Sections()` | `[MarkdownSection[]]` | The nested sections in `Children`. |
+| `Blocks()` | `[MarkdownBlock[]]` | The blocks in `Children` that are not sections. |
+| `GetSection([string[]] $path)` | `[MarkdownSection]` | The section reached by matching title text at each step, ordinal and case-insensitive. Returns nothing when the path matches nothing. |
 
 `Sections()` and `Blocks()` are methods rather than properties. A property returning a filtered view of `Children` would put the same node under two names on one object, and `ConvertTo-Json`, `ConvertTo-Yaml`, and `Export-Clixml` would emit it twice — the duplication [NFR3](spec.md#nfr3) rules out. Methods are also how `Descendants()` already works, so the surface stays consistent.
 
 `Title` is the one node-valued member outside `Children`, and `Descendants()` absorbs it: the walk yields a section's title inlines before its children. That is the single place traversal knows about a node type, and it lives inside the model so that no caller has to hold it. Without it, a query as ordinary as `$doc.Descendants('Link')` would silently miss every link written inside a heading.
+
+**`MarkdownSourceSpan`** — not a node. Populated by the parser, `$null` on hand-constructed nodes, and ignored when models are compared for round-trip equivalence.
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `StartLine` | `[int]` | 1-based. |
+| `StartColumn` | `[int]` | 1-based. |
+| `EndLine` | `[int]` | 1-based, inclusive. |
+| `EndColumn` | `[int]` | 1-based, inclusive. |
+
+Every node class exposes a parameterless constructor and one overload covering its common case, so a document can be built without parsing ([FR9](spec.md#fr9)):
+
+```powershell
+$doc = [MarkdownDocument]::new()
+$section = [MarkdownSection]::new(1, 'Title')
+$section.Children += [MarkdownParagraph]::new('Some text')
+$doc.Children += $section
+$doc | ConvertTo-Markdown
+```
+
+The section overload takes a level and a plain string, and wraps the string in a text node, so the common case does not require assembling inlines by hand.
+
+### Document
+
+**`MarkdownDocument : MarkdownBlock`** — the root, and the return type of `ConvertFrom-Markdown`.
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `FrontMatter` | `[MarkdownFrontMatter]` | Reserved. The type exists and the property stays `$null` while parsing and emitting frontmatter is out of scope, so populating it later does not change the document's shape. |
+| `Children` | `[MarkdownNode[]]` | Block-level nodes: the content before the first heading, then the top-level sections. |
+| `GetLinkReferenceDefinitions()` | `[MarkdownLinkReferenceDefinition[]]` | A method, not a property — the definitions are already nodes in the tree, and a second reference to them would duplicate them in serialized output. |
+
+**`MarkdownFrontMatter`** — deliberately not a node. It is not Markdown, it never appears in `Children`, and nothing that walks the tree encounters it.
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Format` | `[MarkdownFrontMatterFormat]` | The metadata format. |
+| `Raw` | `[string]` | Verbatim text between the delimiters, so an untouched document round-trips losslessly. |
+| `Data` | `[object]` | The deserialized value. |
+
+### Blocks
+
+**`MarkdownSection : MarkdownBlock`** — not a CommonMark construct. A section is the grouping the specification's block sequence implies: a heading and everything up to the next heading of the same or a lower level ([FR2](spec.md#fr2)). It absorbs the heading itself, so [§4.2](https://spec.commonmark.org/0.31.2/#atx-headings) and [§4.3](https://spec.commonmark.org/0.31.2/#setext-headings) are modelled here and nowhere else.
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Level` | `[int]` | 1–6. A setext heading is 1 or 2. |
+| `Title` | `[MarkdownInline[]]` | The heading text as inline nodes. Reached by `Descendants()` ahead of `Children`. |
+| `Style` | `[MarkdownHeadingStyle]` | *style.* `Atx`, `AtxClosed` (`## foo ##`), or `Setext`. |
+| `Children` | `[MarkdownNode[]]` | The section's own blocks, then its nested sections, in document order. Empty collection for a leaf section. |
+| `GetTitleText()` | `[string]` | The title as plain text, markup removed. |
+
+Nesting depth is *not* the level. `Level` stays the only source of truth for rendering, so a document that skips a level nests the deeper section directly under the shallower one and re-renders it unchanged.
+
+**`MarkdownParagraph : MarkdownBlock`** — [§4.8](https://spec.commonmark.org/0.31.2/#paragraphs)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Children` | `[MarkdownNode[]]` | Inline nodes. |
+
+**`MarkdownThematicBreak : MarkdownBlock`** — [§4.1](https://spec.commonmark.org/0.31.2/#thematic-breaks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Marker` | `[MarkdownThematicBreakMarker]` | *style.* `Hyphen`, `Asterisk`, or `Underscore`. |
+| `MarkerCount` | `[int]` | *style.* At least 3. |
+
+**`MarkdownIndentedCodeBlock : MarkdownBlock`** — [§4.4](https://spec.commonmark.org/0.31.2/#indented-code-blocks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Literal` | `[string]` | Code content with the four-space indent removed. |
+
+**`MarkdownFencedCodeBlock : MarkdownBlock`** — [§4.5](https://spec.commonmark.org/0.31.2/#fenced-code-blocks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `InfoString` | `[string]` | The full info string as written. |
+| `Language` | `[string]` | First word of the info string. Convenience, derived from `InfoString`. |
+| `FenceCharacter` | `[MarkdownFenceCharacter]` | *style.* `Backtick` or `Tilde`. |
+| `FenceLength` | `[int]` | *style.* At least 3, and long enough to contain the content. |
+| `Literal` | `[string]` | Code content. |
+
+**`MarkdownHtmlBlock : MarkdownBlock`** — [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Literal` | `[string]` | Raw HTML, verbatim. |
+| `Kind` | `[int]` | 1–7, the block type from the specification. Determines the termination condition on re-parse. |
+
+**`MarkdownLinkReferenceDefinition : MarkdownBlock`** — [§4.7](https://spec.commonmark.org/0.31.2/#link-reference-definitions)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Label` | `[string]` | As written. |
+| `NormalizedLabel` | `[string]` | Case-folded and whitespace-collapsed per the matching rules, used for resolution. |
+| `Destination` | `[string]` | |
+| `Title` | `[string]` | |
+
+**`MarkdownBlockQuote : MarkdownBlock`** — [§5.1](https://spec.commonmark.org/0.31.2/#block-quotes)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Children` | `[MarkdownNode[]]` | Block nodes. |
+
+**`MarkdownList : MarkdownBlock`** — [§5.3](https://spec.commonmark.org/0.31.2/#lists)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Kind` | `[MarkdownListKind]` | `Bullet` or `Ordered`. |
+| `Start` | `[int]` | Starting number for ordered lists. |
+| `Marker` | `[MarkdownListMarker]` | *style.* `Hyphen`, `Asterisk`, `Plus` for bullet lists; `Period`, `Parenthesis` for ordered. |
+| `IsTight` | `[bool]` | Tight lists render without blank lines between items. Semantic, not stylistic — the specification derives it from the source. |
+| `Children` | `[MarkdownNode[]]` | `MarkdownListItem` nodes. |
+
+**`MarkdownListItem : MarkdownBlock`** — [§5.2](https://spec.commonmark.org/0.31.2/#list-items)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Children` | `[MarkdownNode[]]` | Block nodes. |
+
+### Inlines
+
+**`MarkdownText : MarkdownInline`** — [§6.9](https://spec.commonmark.org/0.31.2/#textual-content)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Literal` | `[string]` | The resolved characters, with [backslash escapes](https://spec.commonmark.org/0.31.2/#backslash-escapes) and [entity references](https://spec.commonmark.org/0.31.2/#entity-and-numeric-character-references) decoded. This is what `GetText()` returns. |
+| `Raw` | `[string]` | *style.* The original spelling, so `&amp;` re-renders as `&amp;` rather than being re-escaped from scratch. |
+
+**`MarkdownCodeSpan : MarkdownInline`** — [§6.1](https://spec.commonmark.org/0.31.2/#code-spans)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Literal` | `[string]` | Code content. |
+| `BacktickCount` | `[int]` | *style.* Must exceed the longest backtick run in the content. |
+
+**`MarkdownEmphasis : MarkdownInline`** and **`MarkdownStrongEmphasis : MarkdownInline`** — [§6.2](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Marker` | `[MarkdownEmphasisMarker]` | *style.* `Asterisk` or `Underscore`. |
+| `Children` | `[MarkdownNode[]]` | Inline nodes. |
+
+**`MarkdownLink : MarkdownInline`** — [§6.3](https://spec.commonmark.org/0.31.2/#links)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Destination` | `[string]` | |
+| `Title` | `[string]` | `$null` when absent. |
+| `TitleDelimiter` | `[MarkdownTitleDelimiter]` | *style.* `DoubleQuote`, `SingleQuote`, or `Parenthesis`. |
+| `DestinationInAngleBrackets` | `[bool]` | *style.* The `<...>` form. |
+| `Label` | `[string]` | Reference label, `$null` for inline links. |
+| `ReferenceKind` | `[MarkdownLinkReferenceKind]` | `Inline`, `Full`, `Collapsed`, or `Shortcut`. |
+| `Children` | `[MarkdownNode[]]` | The link text, as inline nodes. |
+
+**`MarkdownImage : MarkdownInline`** — [§6.4](https://spec.commonmark.org/0.31.2/#images) — identical to `MarkdownLink`, with `Children` holding the alt text.
+
+**`MarkdownAutolink : MarkdownInline`** — [§6.5](https://spec.commonmark.org/0.31.2/#autolinks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Destination` | `[string]` | |
+| `Kind` | `[MarkdownAutolinkKind]` | `Uri` or `Email`. |
+
+**`MarkdownRawHtml : MarkdownInline`** — [§6.6](https://spec.commonmark.org/0.31.2/#raw-html)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Literal` | `[string]` | The tag, verbatim. |
+
+**`MarkdownHardLineBreak : MarkdownInline`** — [§6.7](https://spec.commonmark.org/0.31.2/#hard-line-breaks)
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Marker` | `[MarkdownLineBreakMarker]` | *style.* `Backslash` or `Spaces`. |
+
+**`MarkdownSoftLineBreak : MarkdownInline`** — [§6.8](https://spec.commonmark.org/0.31.2/#soft-line-breaks) — no properties beyond the shared members.
+
+### Enums
+
+| Enum | Values |
+| --- | --- |
+| `MarkdownHeadingStyle` | `Atx`, `AtxClosed`, `Setext` |
+| `MarkdownThematicBreakMarker` | `Hyphen`, `Asterisk`, `Underscore` |
+| `MarkdownFenceCharacter` | `Backtick`, `Tilde` |
+| `MarkdownListKind` | `Bullet`, `Ordered` |
+| `MarkdownListMarker` | `Hyphen`, `Asterisk`, `Plus`, `Period`, `Parenthesis` |
+| `MarkdownEmphasisMarker` | `Asterisk`, `Underscore` |
+| `MarkdownLinkReferenceKind` | `Inline`, `Full`, `Collapsed`, `Shortcut` |
+| `MarkdownTitleDelimiter` | `DoubleQuote`, `SingleQuote`, `Parenthesis` |
+| `MarkdownAutolinkKind` | `Uri`, `Email` |
+| `MarkdownLineBreakMarker` | `Backslash`, `Spaces` |
+| `MarkdownFrontMatterFormat` | `Yaml` |
+
+Enums rather than validated strings, so invalid states are unrepresentable, tab completion works on assignment, and serialized output carries readable names. `MarkdownHeadingStyle` is a section property, because the section is what carries the heading.
+
+### Constructs that are deliberately not nodes
+
+| Construct | Specification | Why not |
+| --- | --- | --- |
+| Headings | [§4.2](https://spec.commonmark.org/0.31.2/#atx-headings), [§4.3](https://spec.commonmark.org/0.31.2/#setext-headings) | A heading and the section it opens are one thing. Level, title, and style are section properties, so a separate node would be one nothing in the model could hold. |
+| Blank lines | [§4.9](https://spec.commonmark.org/0.31.2/#blank-lines) | Separators, not content. They determine block boundaries and list tightness, both of which are captured on the surrounding nodes. |
+| Backslash escapes | [§2.4](https://spec.commonmark.org/0.31.2/#backslash-escapes) | Resolve into `MarkdownText.Literal`, with the source form kept in `Raw`. |
+| Entity and numeric references | [§2.5](https://spec.commonmark.org/0.31.2/#entity-and-numeric-character-references) | Same. |
+| Frontmatter | — | Not Markdown. A property on the document, never a child node. |
 
 ### Sectioning
 
@@ -153,7 +490,7 @@ A section emits its heading line, reconstructed from `Level`, `Title`, and `Styl
 
 ## Data and contracts
 
-The model is the module's public contract, so its nodes are plain objects: public, typed, settable properties and no backing fields. That is what lets any general-purpose serializer take a parsed document and produce complete output, and what keeps the graph acyclic — no node holds a reference to its parent.
+The model is the module's public contract, so its nodes are plain objects: public, typed, settable properties and no backing fields. That is what lets any general-purpose serializer take a parsed document and produce complete output, and what keeps the graph acyclic — no node holds a reference to its parent. A `Parent` property would create cycles that break `ConvertTo-Json`, `Format-List`, and cloning, and it would make moving a subtree between documents error-prone. The parent context a parser needs lives on the parser's own stack, and a consumer that needs positional context uses `Descendants()`, which returns document order.
 
 Validation is not performed in property setters. A node accepts a state it cannot render; the renderer throws on what it cannot express, and structural checking is a separate concern. Validating on assignment would require accessors and backing fields, which conflicts directly with plain serializable properties.
 
