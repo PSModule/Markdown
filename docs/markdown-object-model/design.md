@@ -48,7 +48,7 @@ flowchart TD
     BL --> BQ["MarkdownBlockQuote"]
     BL --> LS["MarkdownList"]
     BL --> PA["MarkdownParagraph"]
-    BL --> LFB["MarkdownThematicBreak<br>MarkdownIndentedCodeBlock<br>MarkdownFencedCodeBlock<br>MarkdownHtmlBlock<br>MarkdownLinkReferenceDefinition"]
+    BL --> LFB["MarkdownThematicBreak<br>MarkdownIndentedCodeBlock<br>MarkdownFencedCodeBlock<br>MarkdownHtmlBlock<br>MarkdownCommentBlock<br>MarkdownLinkReferenceDefinition"]
 
     SE --> BL
     BQ --> BL
@@ -60,7 +60,7 @@ flowchart TD
 
     IL --> EM["MarkdownEmphasis<br>MarkdownStrongEmphasis"]
     IL --> LK["MarkdownLink<br>MarkdownImage"]
-    IL --> LFI["MarkdownText<br>MarkdownCodeSpan<br>MarkdownAutolink<br>MarkdownRawHtml<br>MarkdownHardLineBreak<br>MarkdownSoftLineBreak"]
+    IL --> LFI["MarkdownText<br>MarkdownCodeSpan<br>MarkdownAutolink<br>MarkdownRawHtml<br>MarkdownComment<br>MarkdownHardLineBreak<br>MarkdownSoftLineBreak"]
 
     EM --> IL
     LK --> IL
@@ -134,6 +134,16 @@ Four things this makes concrete. The document holds one child, and everything un
 | `Header { Level, Title (string), Content }` — as prototyped in [PSModule/Markdown#18](https://github.com/PSModule/Markdown/pull/18) | The simplest containment shape, and proven to work across all three platforms. A string title discards inline markup in a heading, and the loss is unrecoverable once parsing has finished. | Rejected — lossy |
 | `Section { Level, Title (inlines), Style, Children }`, `Children` as the only storage | One type, direct access to level and title, and no fidelity loss. Grouping happens once, at parse time, in one place, and document order is preserved by the collection itself. Costs one pass over the block sequence, and heading level is no longer readable from nesting depth. | **Chosen** |
 
+### Comments as a node type
+
+A comment is the only way a Markdown document says something to a tool rather than to a reader, and it occurs at block level and at inline level alike. A PowerShell class has a single base, so one type cannot derive from both `MarkdownBlock` and `MarkdownInline`. The model therefore carries two — `MarkdownCommentBlock` and `MarkdownComment` — and both report a `Type` of `Comment`, so `Descendants('Comment')` finds every comment at either level.
+
+| Option | Trade-offs | Verdict |
+| --- | --- | --- |
+| One type deriving from `MarkdownNode` directly | One name for one concept. It sits outside the block and inline split the filtering idiom depends on, so `$_ -is [MarkdownBlock]` stops being a complete test of what a container holds. | Rejected — breaks the filtering idiom |
+| No new type — an `IsComment` flag on `MarkdownHtmlBlock` and `MarkdownRawHtml` | The smallest surface, and nothing new to learn. The content stays raw text with its delimiters attached, so every caller still strips delimiters and matches text, which is most of the problem left unsolved. | Rejected — solves almost nothing |
+| Two types, one block and one inline | Mirrors the `MarkdownHtmlBlock` and `MarkdownRawHtml` pair already in the inventory, so `$_ -is [MarkdownBlock]` keeps working, and a shared `Type` keeps one query sufficient. Costs two class names for one concept. | **Chosen** |
+
 ## Architecture
 
 The schema below is the complete node inventory: every class, every property, and the specification section it derives from. Properties marked *style* exist only so the renderer can reproduce the source form; they carry no semantic content, and a consumer that does not render Markdown can ignore them.
@@ -184,6 +194,7 @@ classDiagram
     MarkdownBlock <|-- MarkdownIndentedCodeBlock
     MarkdownBlock <|-- MarkdownFencedCodeBlock
     MarkdownBlock <|-- MarkdownHtmlBlock
+    MarkdownBlock <|-- MarkdownCommentBlock
     MarkdownBlock <|-- MarkdownLinkReferenceDefinition
     MarkdownBlock <|-- MarkdownBlockQuote
     MarkdownBlock <|-- MarkdownList
@@ -197,6 +208,7 @@ classDiagram
     MarkdownInline <|-- MarkdownImage
     MarkdownInline <|-- MarkdownAutolink
     MarkdownInline <|-- MarkdownRawHtml
+    MarkdownInline <|-- MarkdownComment
     MarkdownInline <|-- MarkdownHardLineBreak
     MarkdownInline <|-- MarkdownSoftLineBreak
 
@@ -318,6 +330,14 @@ Nesting depth is *not* the level. `Level` stays the only source of truth for ren
 | `Literal` | `[string]` | Raw HTML, verbatim. |
 | `Kind` | `[int]` | 1–7, the block type from the specification. Determines the termination condition on re-parse. |
 
+**`MarkdownCommentBlock : MarkdownBlock`** — [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks). A block that is exactly a comment ([FR15](spec.md#fr15)). A block carrying a comment plus trailing content on the same line stays a `MarkdownHtmlBlock`.
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `Text` | `[string]` | The inner text, without the `<!--` and `-->` delimiters. Empty for the degenerate forms. |
+| `Raw` | `[string]` | *style.* The comment exactly as written, so `<!-- x -->` does not re-render as `<!--x-->`. |
+| `IsTerminated` | `[bool]` | `$false` when the comment ran to the end of the document with no line containing `-->`. |
+
 **`MarkdownLinkReferenceDefinition : MarkdownBlock`** — [§4.7](https://spec.commonmark.org/0.31.2/#link-reference-definitions)
 
 | Property | Type | Notes |
@@ -398,6 +418,8 @@ Nesting depth is *not* the level. `Level` stays the only source of truth for ren
 | Property | Type | Notes |
 | --- | --- | --- |
 | `Literal` | `[string]` | The tag, verbatim. |
+
+**`MarkdownComment : MarkdownInline`** — [§6.6](https://spec.commonmark.org/0.31.2/#raw-html). A comment inside inline content, including the degenerate `<!-->` and `<!--->` forms. Carries `Text`, `Raw`, and `IsTerminated`, exactly as `MarkdownCommentBlock` does, and reports the same `Type` of `Comment`.
 
 **`MarkdownHardLineBreak : MarkdownInline`** — [§6.7](https://spec.commonmark.org/0.31.2/#hard-line-breaks)
 
@@ -507,6 +529,7 @@ Validation is not performed in property setters. A node accepts a state it canno
 | Unit | The grouping pass in isolation: nesting, skipped levels, a level rising again, a document starting below level 1, content before the first heading, and headings inside a block quote and a list item |
 | Unit | `Sections()`, `Blocks()`, `Descendants()`, and `GetSection()` against a document with sections three levels deep |
 | Unit | A section title holding emphasis, a code span, and a link: the inlines are reachable from `Descendants()`, `GetTitleText()` strips the markup, and rendering restores it |
+| Unit | Comment recognition: a comment as its own block, a comment inside a paragraph and inside a section title, a comment with trailing content on the same line staying an HTML block, an unterminated comment, both degenerate forms, and comment-looking text inside a code span, a fenced block, and an indented block |
 | Contract | Rendered output matches the ungrouped block sequence byte for byte, over the whole [commonmark-spec](https://github.com/commonmark/commonmark-spec) example set |
 | Contract | Parse, render, parse again produces an equivalent model, and rendering the second model produces identical text |
 | Contract | Converting a parsed document to JSON, YAML, and CLIXML completes with no duplicated node and no cycle |
