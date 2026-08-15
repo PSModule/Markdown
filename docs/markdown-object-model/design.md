@@ -102,32 +102,46 @@ flowchart TD
 
 The grouping pass runs after block parsing, over the child block sequence of each block container, before inline parsing. It is the only place the outline rules of Markdown are expressed.
 
+Four rules close and attach sections, and together they are the whole of the outline:
+
+1. A heading of level N closes every open section whose level is greater than or equal to N.
+2. The new section attaches to the nearest still-open section with a level below N, or to the container root when none remains.
+3. A block that is not a heading attaches to the innermost open section, or to the container root when none is open.
+4. Reaching the end of a container closes everything still open in it.
+
+The first three are the loop; the fourth is the return.
+
 ```text
 sectionize(blocks):
     roots = []                       # blocks and sections at container level
-    open  = []                       # open sections, heading levels strictly increasing
+    open  = []                       # open sections, levels strictly increasing
 
     for block in blocks:
         if block is a heading:
-            while open is not empty and open.last.Heading.Level >= block.Level:
+            while open is not empty and open.last.Level >= block.Level:   # rule 1
                 remove open.last
-            section = new Section(Heading = block)
-            if open is empty: roots.add(section) else: open.last.Children.add(section)
+            section = new Section(Level = block.Level,
+                                  Title = block.Title,
+                                  Style = block.Style)
+            if open is empty: roots.add(section) else: open.last.Children.add(section)   # rule 2
             open.add(section)
         else:
-            if open is empty: roots.add(block) else: open.last.Children.add(block)
+            if open is empty: roots.add(block) else: open.last.Children.add(block)       # rule 3
 
-    return roots
+    return roots                     # rule 4: every section still open closes here
 ```
 
-The consequences are the behaviour [FR6](spec.md#fr6) requires, and they follow from the algorithm rather than from special cases:
+The heading block is consumed rather than kept — its level, title, and style move onto the section, and nothing of it survives as a node. Because the pass runs before inline parsing, `Title` carries the heading's unparsed inline content at this point, and the inline pass fills it in the same walk that fills every other leaf.
+
+The consequences are the behaviour [FR6](spec.md#fr6) requires, and they follow from the four rules rather than from special cases:
 
 - Blocks before the first heading stay at container level, which is why the document holds content of its own.
 - A heading closes every open section at its level or deeper, so a level rising again is ordinary rather than an error.
-- A skipped level nests the deeper section directly under the shallower one. Nesting depth is therefore not the heading level, and `MarkdownHeading.Level` remains the only source of truth for rendering.
+- A skipped level nests the deeper section directly under the shallower one. Nesting depth is therefore not the heading level, and `MarkdownSection.Level` remains the only source of truth for rendering.
 - A document that starts below level 1 needs no special handling: `open` is empty, so its first section is a root.
+- `open` never holds more than six sections, because levels in it strictly increase and a heading level is at most six. That is the section nesting bound in [FR14](spec.md#fr14), and it falls out of rule 1 rather than being enforced.
 
-Running per container is what makes a heading inside a block quote or a list item section that container and nothing above it ([FR5](spec.md#fr5)).
+Running per container is what makes a heading inside a block quote or a list item section that container and nothing above it ([FR5](spec.md#fr5)). It is also why total tree depth is unbounded while section nesting is not: every container starts with an empty `open`, so a block quote inside a level 6 section begins the count again.
 
 ### Rendering
 
