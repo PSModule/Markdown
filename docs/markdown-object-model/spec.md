@@ -117,7 +117,7 @@ Total depth of the model MUST NOT be bounded. Sectioning restarts inside every b
 
 A comment MUST be its own kind of node rather than opaque raw HTML, at block level and at inline level alike, and every comment MUST report the same construct name so that one query finds all of them.
 
-A block is a comment only when the block is exactly a comment. [CommonMark](https://spec.commonmark.org/0.31.2/#html-blocks) ends an HTML block at the first line containing `-->`, and whatever follows the terminator on that line belongs to the same block — in [example 172](https://spec.commonmark.org/0.31.2/#example-172), `<!-- foo -->*bar*` is one HTML block in which `*bar*` is not emphasized. A block whose comment is followed by other content on the same line MUST therefore stay an HTML block, because promoting it would discard the trailing content.
+A block is a comment only when the block is exactly a comment. [CommonMark](https://spec.commonmark.org/0.31.2/#html-blocks) ends an HTML block at the first line containing `-->`, and whatever follows the terminator on that line belongs to the same block — in [example 177](https://spec.commonmark.org/0.31.2/#example-177), `<!-- foo -->*bar*` is one HTML block in which `*bar*` is not emphasized. A block whose comment is followed by other content on the same line MUST therefore stay an HTML block, because promoting it would discard the trailing content.
 
 ### FR16 — A comment exposes its text and whether it was terminated {#fr16}
 
