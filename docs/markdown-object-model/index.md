@@ -5,7 +5,7 @@ description: The capability that turns a Markdown document into a typed, section
 
 # Markdown object model
 
-Markdown text goes in, a typed object model comes out, and Markdown comes back. The model is organised the way a document reads — a tree of sections, each owning its heading, its own content, and the sections nested inside it — so documentation automation manipulates structure instead of matching patterns in text.
+Markdown text goes in, a typed object model comes out, and Markdown comes back. The model is organised the way a document reads — a tree of sections, each carrying the heading that opens it, its own content, and the sections nested inside it — so documentation automation manipulates structure instead of matching patterns in text.
 
 | Document | Answers |
 | --- | --- |
@@ -19,7 +19,7 @@ Document
 ├── FrontMatter                     the metadata part
 ├── (blocks)                        content before the first heading
 └── Section
-    ├── Heading
+    ├── Level / Title / Style       the heading, carried on the section
     ├── (blocks)                    content before the first subheading
     └── Section                     recursive, empty for a leaf section
 ```

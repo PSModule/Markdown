@@ -5,7 +5,7 @@ description: The typed object model a Markdown document parses into — a tree o
 
 # Markdown object model
 
-A Markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to Markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section owns its heading, its own content, and the sections nested inside it.
+A Markdown document is available as a typed object model that can be inspected, queried, transformed, and rendered back to Markdown. The model is organised the way a document reads: a document holds a tree of sections, and a section carries the heading that opens it, its own content, and the sections nested inside it.
 
 ## Why
 
@@ -33,7 +33,7 @@ A model that mirrors the specification's own block sequence does not solve this 
 **In scope**
 
 - Parsing a Markdown string into the object model.
-- Sections as the organising structure of the model, nested to any depth.
+- Sections as the organising structure of the model, nested as deeply as heading levels allow.
 - Every block and inline construct defined by [CommonMark](https://spec.commonmark.org/0.31.2/).
 - Rendering any node of the model back to Markdown, whole document or single subtree.
 - Constructing a document from scratch, without parsing.
@@ -59,9 +59,9 @@ A model that mirrors the specification's own block sequence does not solve this 
 
 Parsing MUST accept any text valid under [CommonMark](https://spec.commonmark.org/0.31.2/) and MUST produce a typed object for every block and inline construct the specification defines. Parsing MUST NOT fail on structurally unusual but valid input.
 
-### FR2 — A section owns its heading and everything beneath it {#fr2}
+### FR2 — A section carries its heading and owns everything beneath it {#fr2}
 
-A section MUST expose the heading that introduces it, the content that follows that heading, and the sections nested inside it. Content that follows a heading, up to the next heading of the same or a lower level, MUST belong to that section.
+A section MUST expose the level, the title, and the heading style of the heading that introduces it, together with the content that follows that heading and the sections nested inside it. There MUST NOT be a separate node type for a heading. The title MUST be held as inline nodes, so that markup written inside a heading survives a parse and render cycle, and a section MUST also expose its title as plain text. Content that follows a heading, up to the next heading of the same or a lower level, MUST belong to that section.
 
 ### FR3 — A section without nested sections is the same kind of thing {#fr3}
 
@@ -69,7 +69,7 @@ A section that has no nested sections MUST be the same type as one that does, ho
 
 ### FR4 — A document is a section container without a heading {#fr4}
 
-The document MUST be the same kind of container as a section, differing only in that it has no heading and carries the document's metadata part. Content appearing before the first heading MUST belong to the document.
+The document MUST be the same kind of container as a section, differing only in that it carries no heading level, title, or style, and carries the document's metadata part instead. Content appearing before the first heading MUST belong to the document.
 
 ### FR5 — Sectioning applies wherever blocks appear {#fr5}
 
@@ -77,15 +77,15 @@ Any construct that contains a sequence of blocks — the document, a section, a 
 
 ### FR6 — Heading level survives nesting {#fr6}
 
-A heading's level MUST be preserved independently of how deeply its section is nested. A document that skips a level MUST nest the deeper section directly under the shallower one, MUST NOT introduce a section that is not present in the document, and MUST re-render each heading at its original level. A document that starts below the first level, or whose heading levels rise again later, MUST parse without error.
+A section's level MUST be preserved independently of how deeply that section is nested. A document that skips a level MUST nest the deeper section directly under the shallower one, MUST NOT introduce a section that is not present in the document, and MUST re-render each section at its original level. A document that starts below the first level, or whose heading levels rise again later, MUST parse without error.
 
 ### FR7 — A section is addressable by its heading {#fr7}
 
-A section MUST be reachable by its heading text and by a path of heading texts through nested sections, without the caller indexing into a collection or computing heading levels.
+A section MUST be reachable by its title text and by a path of title texts through nested sections, without the caller indexing into a collection or computing heading levels.
 
 ### FR8 — The whole model is traversable in one walk {#fr8}
 
-A single recursive traversal MUST reach every node in the model, without the caller branching on node type. Traversal MUST yield a section's heading before the section's content.
+A single recursive traversal MUST reach every node in the model, without the caller branching on node type. The inline nodes a section holds as its title MUST be reached by that traversal, before the section's content.
 
 ### FR9 — A document can be built without parsing {#fr9}
 
@@ -93,7 +93,7 @@ Every node MUST be constructible directly, so a document can be assembled in mem
 
 ### FR10 — Any node renders to specification-valid Markdown {#fr10}
 
-Rendering MUST accept any node and MUST return Markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as rendering its heading followed by its content in document order.
+Rendering MUST accept any node and MUST return Markdown for that node and everything below it, so a whole document and a single section are rendered the same way. Output MUST be valid under [CommonMark](https://spec.commonmark.org/0.31.2/) — correctly escaped, with sufficient fence lengths and correct list indentation — not merely text this module can read back. Rendering a section MUST produce the same text as its heading line, reconstructed from its level, title, and style, followed by its content in document order.
 
 ### FR11 — Round-tripping is semantically stable {#fr11}
 
@@ -106,6 +106,38 @@ A node produced by parsing MUST record its position in the source text, so tooli
 ### FR13 — The composition DSL is unaffected {#fr13}
 
 The existing `Set-Markdown*` functions MUST keep working unchanged.
+
+### FR14 — Section nesting is bounded at six levels; the tree is not bounded at all {#fr14}
+
+A chain of sections nested one inside another MUST NOT exceed six. Sections nest only where levels strictly increase, and an ATX heading is an opening sequence of one to six unescaped `#` characters ([§4.2](https://spec.commonmark.org/0.31.2/#atx-headings)), so the longest chain a document can express runs from level one to level six. There is no seventh level.
+
+Total depth of the model MUST NOT be bounded. Sectioning restarts inside every block container, and a heading is legal inside a block quote and inside a list item, so a block quote nested in a level six section may hold a section of its own at level one. The bound is six levels of sectioning per container, across an unlimited number of containers.
+
+### FR15 — A comment is a node of the model {#fr15}
+
+A comment MUST be its own kind of node rather than opaque raw HTML, at block level and at inline level alike, and every comment MUST report the same construct name so that one query finds all of them.
+
+A block is a comment only when the block is exactly a comment. [CommonMark](https://spec.commonmark.org/0.31.2/#html-blocks) ends an HTML block at the first line containing `-->`, and whatever follows the terminator on that line belongs to the same block — in [example 177](https://spec.commonmark.org/0.31.2/#example-177), `<!-- foo -->*bar*` is one HTML block in which `*bar*` is not emphasized. A block whose comment is followed by other content on the same line MUST therefore stay an HTML block, because promoting it would discard the trailing content.
+
+### FR16 — A comment exposes its text and whether it was terminated {#fr16}
+
+A comment MUST expose its inner text without the `<!--` and `-->` delimiters, so that reading a comment requires no string handling by the caller. It MUST also expose whether the comment was terminated in the source.
+
+### FR17 — An unterminated comment ends with its container {#fr17}
+
+Where no subsequent line contains `-->`, the comment MUST extend to the last line of the block container holding it, and to the last line of the document only when no container encloses it. [§4.6](https://spec.commonmark.org/0.31.2/#html-blocks) gives both endings: an HTML block ends at "the last line of the document, or the last line of the container block containing the current HTML block, if no line is encountered that meets the end condition". An unterminated comment inside a block quote or a list item therefore ends with that block quote or list item, and content following the container is unaffected. The model MUST record the comment as unterminated rather than presenting it as closed.
+
+### FR18 — The degenerate comment forms are comments {#fr18}
+
+`<!-->` and `<!--->` are comments under [§6.6](https://spec.commonmark.org/0.31.2/#raw-html). Both MUST parse as comments, MUST carry no inner text, and MUST render back exactly as written.
+
+### FR19 — A comment's delimiters and inner spacing are preserved {#fr19}
+
+A comment MUST re-render in the form it was written, so `<!-- x -->` MUST NOT become `<!--x-->`. Preservation of the written form is independent of the inner text a caller reads.
+
+### FR20 — Comment-looking text inside code is not a comment {#fr20}
+
+Text resembling a comment inside a code span, a fenced code block, or an indented code block is code content. It MUST NOT be recognised as a comment, and it MUST render back unchanged.
 
 ## Non-functional requirements
 
@@ -143,6 +175,12 @@ Feature: Sections own their content
     Then that section holds no nested sections
     And it is the same type as a section that has them
 
+  Scenario: A section title keeps its inline markup
+    Given a document whose heading contains emphasis and a code span
+    When the document is parsed
+    Then the section's title holds that emphasis and code span as inline nodes
+    And rendering the section reproduces the heading with its markup intact
+
   Scenario: Content before the first heading belongs to the document
     Given a document that opens with a paragraph before any heading
     When the document is parsed
@@ -162,10 +200,16 @@ Feature: Sections own their content
     Then the section is content of the block quote
     And the document reports no section for that heading
 
+  Scenario: A container restarts the section depth
+    Given a level 6 section containing a block quote that opens with a level 1 heading
+    When the document is parsed
+    Then the block quote holds a section at level 1
+    And no chain of nested sections within a single container exceeds six
+
   Scenario: A section renders on its own
     Given a parsed document containing a section with nested sections
     When that section is rendered
-    Then the result is its heading followed by its content and nested sections
+    Then the result is its heading line followed by its content and nested sections
     And the result parses back to an equivalent section
 
   Scenario: Rendering is stable
@@ -173,6 +217,42 @@ Feature: Sections own their content
     When it is parsed, rendered, and parsed again
     Then the two models are equivalent
     And rendering the second model produces identical text
+```
+
+```gherkin
+Feature: Comments are part of the model
+
+  Scenario: A block that is exactly a comment is a comment
+    Given a document containing a line that holds only a comment
+    When the document is parsed
+    Then that block is a comment
+    And its text is the comment content without the delimiters
+
+  Scenario: A comment with trailing content stays an HTML block
+    Given a document containing the line "<!-- foo -->*bar*"
+    When the document is parsed
+    Then that block is an HTML block
+    And the trailing content is retained verbatim
+
+  Scenario: An unterminated comment reaches the end of the document
+    Given a document containing an opening comment delimiter and no terminator
+    When the document is parsed
+    Then the comment extends to the last line of the document
+    And it reports that it was not terminated
+
+  Scenario: An unterminated comment inside a container ends with that container
+    Given a block quote containing an opening comment delimiter and no terminator
+    And a paragraph following the block quote
+    When the document is parsed
+    Then the comment extends to the last line of the block quote
+    And it reports that it was not terminated
+    And the paragraph following the block quote is not part of the comment
+
+  Scenario: Comment-looking text in code stays code
+    Given a fenced code block whose content looks like a comment
+    When the document is parsed
+    Then the document reports no comment
+    And the code block content renders back unchanged
 ```
 
 ## Constraints and assumptions
