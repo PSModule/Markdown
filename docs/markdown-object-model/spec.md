@@ -33,7 +33,7 @@ A model that mirrors the specification's own block sequence does not solve this 
 **In scope**
 
 - Parsing a Markdown string into the object model.
-- Sections as the organising structure of the model, nested to any depth.
+- Sections as the organising structure of the model, nested as deeply as heading levels allow.
 - Every block and inline construct defined by [CommonMark](https://spec.commonmark.org/0.31.2/).
 - Rendering any node of the model back to Markdown, whole document or single subtree.
 - Constructing a document from scratch, without parsing.
@@ -107,6 +107,12 @@ A node produced by parsing MUST record its position in the source text, so tooli
 
 The existing `Set-Markdown*` functions MUST keep working unchanged.
 
+### FR14 — Section nesting is bounded at six levels; the tree is not bounded at all {#fr14}
+
+A chain of sections nested one inside another MUST NOT exceed six. Sections nest only where levels strictly increase, and an ATX heading is an opening sequence of one to six unescaped `#` characters ([§4.2](https://spec.commonmark.org/0.31.2/#atx-headings)), so the longest chain a document can express runs from level one to level six. There is no seventh level.
+
+Total depth of the model MUST NOT be bounded. Sectioning restarts inside every block container, and a heading is legal inside a block quote and inside a list item, so a block quote nested in a level six section may hold a section of its own at level one. The bound is six levels of sectioning per container, across an unlimited number of containers.
+
 ## Non-functional requirements
 
 ### NFR1 — Conformance is measured against the specification's own examples {#nfr1}
@@ -167,6 +173,12 @@ Feature: Sections own their content
     When the document is parsed
     Then the section is content of the block quote
     And the document reports no section for that heading
+
+  Scenario: A container restarts the section depth
+    Given a level 6 section containing a block quote that opens with a level 1 heading
+    When the document is parsed
+    Then the block quote holds a section at level 1
+    And no chain of nested sections within a single container exceeds six
 
   Scenario: A section renders on its own
     Given a parsed document containing a section with nested sections
